@@ -19,6 +19,7 @@
 #include <cstring>
 #include <vector>
 #include <map>
+#include <glm/gtx/string_cast.hpp>
 
 
 #if defined(WIN32) || defined(_WIN32)
@@ -210,13 +211,13 @@ int numSplines;
 
 float s = 0.5;
 
-vector<float> basis 
-{
+glm::mat4 basis = glm::mat4(
   -s, 2-s, s-2, s,
   2*s, s-3, 3-2*s, -s,
   -s, 0, s, 0,
   0, 1, 0, 0
-};
+);
+
 
 int loadSplines(char * argv) 
 {
@@ -224,7 +225,6 @@ int loadSplines(char * argv)
   FILE * fileList;
   FILE * fileSpline;
   int iType, i = 0, j, iLength;
-
 
   // load the track file 
   fileList = fopen(argv, "r");
@@ -576,6 +576,8 @@ void initScene(int argc, char *argv[])
   if (ret != 0)
     abort();
 
+  fill_lines();
+
   glEnable(GL_DEPTH_TEST);
 
   std::cout << "GL error: " << glGetError() << std::endl;
@@ -672,29 +674,22 @@ void fill_lines()
 {
   lines.clear(), line_colors.clear();
 
+  cout << glm::to_string(basis) << '\n';
+  glm::mat4x3 control;
+
   for (int i = 0; i < splines->numControlPoints - 3; ++i) {
-    
-  }
+    Point p1 = splines->points[i];
+    Point p2 = splines->points[i+1];
+    Point p3 = splines->points[i+2];
+    Point p4 = splines->points[i+3];
 
-  for (int x = 0; x < image_width; ++x)
-  {
-    for (int y = 0; y < image_height; ++y)
-    {
-      // add points horizontally to each other
-      if (x < image_width - 1)
-      {
-        // fill points and color for line mode
-        do_line(x, y);
-        do_line(x + 1, y);
-      }
+    control = glm::mat4x3(
+        p1.x, p1.y, p1.z, 
+        p2.x, p2.y, p2.z, 
+        p3.x, p3.y, p3.z, 
+        p4.x, p4.y, p4.z);
 
-      // add points vertically to each other
-      if (y < image_height - 1)
-      {
-        do_line(x, y);
-        do_line(x, y + 1);
-      }
-    }
+    cout << glm::to_string(control) << '\n';
   }
 
   // set up vbo and vao
