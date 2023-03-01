@@ -20,6 +20,7 @@
 #include <vector>
 #include <map>
 
+
 #if defined(WIN32) || defined(_WIN32)
 #ifdef _DEBUG
 #pragma comment(lib, "glew32d.lib")
@@ -394,18 +395,18 @@ void displayFunc()
   set_matrix();
 
   // get loc for mode in vertex shader
-  // GLuint loc = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+  GLuint loc = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 
   // drawing mode
-  // switch (mode)
-  // {
-  // default:
-  //   glUniform1i(loc, 0);
-  //   glBindVertexArray(vao_point);
-  //   glDrawArrays(GL_POINTS, 0, points.size() / 3);
-  //   glBindVertexArray(0);
-  //   break;
-  // }
+  switch (mode)
+  {
+  default:
+    glUniform1i(loc, 0);
+    glBindVertexArray(vao_line);
+    glDrawArrays(GL_LINES, 0, lines.size() / 3);
+    glBindVertexArray(0);
+    break;
+  }
 
   glutSwapBuffers();
 }
@@ -670,7 +671,11 @@ void fill_points()
 void fill_lines()
 {
   lines.clear(), line_colors.clear();
-  solid_lines.clear(), solid_line_colors.clear();
+
+  for (int i = 0; i < splines->numControlPoints - 3; ++i) {
+    
+  }
+
   for (int x = 0; x < image_width; ++x)
   {
     for (int y = 0; y < image_height; ++y)
@@ -680,36 +685,20 @@ void fill_lines()
       {
         // fill points and color for line mode
         do_line(x, y);
-
-        // fill points and color for solid_line mode
-        do_solid_line(x, y);
-
         do_line(x + 1, y);
-        do_solid_line(x + 1, y);
       }
 
       // add points vertically to each other
       if (y < image_height - 1)
       {
         do_line(x, y);
-        do_solid_line(x, y);
-
         do_line(x, y + 1);
-        do_solid_line(x, y + 1);
-      }
-
-      // diagonal line looks ugly
-      if (x < image_width - 1 && y < image_height - 1)
-      {
-        do_solid_line(x, y);
-        do_solid_line(x + 1, y + 1);
       }
     }
   }
 
   // set up vbo and vao
   set_lines_buffer();
-  set_solid_line_buffer();
 }
 
 /* Generate points for triangle mode */
