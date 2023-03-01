@@ -676,39 +676,50 @@ void fill_lines()
 {
   lines.clear(), line_colors.clear();
 
-  cout << glm::to_string(basis) << '\n';
-
   // 3 columns, 4 rows
-  glm::mat3x4 control;
-  
+  glm::mat3x4 control, m; 
+  glm::vec3 position, init_pos;
+  Point p1, p2, p3, p4;
 
-  float step = 0.01f;
+  float step = 0.1f;
   float u = 0.0f;
+  int count = 0;
 
   for (int i = 0; i < splines->numControlPoints - 3; ++i) {
-    Point p1 = splines->points[i];
-    Point p2 = splines->points[i+1];
-    Point p3 = splines->points[i+2];
-    Point p4 = splines->points[i+3];
+    p1 = splines->points[i];
+    p2 = splines->points[i+1];
+    p3 = splines->points[i+2];
+    p4 = splines->points[i+3];
 
     control = glm::mat3x4(
         p1.x, p2.x, p3.x, p4.x, 
         p1.y, p2.y, p3.y, p4.y, 
         p1.z, p2.z, p3.z, p4.z);
 
-    glm::mat3x4 m = basis * control;
+    m = basis * control;
 
     while (u <= 1.0) {
-
       glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
-      glm::vec3 position = us * m;
+
+      if (lines.size() > 3) {
+        do_line(position);
+      }
+
+      position = us * m;
+      ++count;
+
+      if (lines.size() == 0)
+        init_pos = position;
+
       do_line(position);
       u += step;
-      
     }
 
     u = 0.0f;
   }
+
+  do_line(position);
+  do_line(init_pos);
 
   // set up vbo and vao
   set_lines_buffer();
