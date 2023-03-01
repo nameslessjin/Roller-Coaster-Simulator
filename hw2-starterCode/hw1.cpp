@@ -46,10 +46,11 @@ void fill_triangles();
 void fill_triangle_strip();
 void get_surrounding_points_height(int x, int y);
 
+void generate_point_new(glm::vec3 &coords, vector<float> &position, vector<float> &color);
 void generate_point(int x, int y, vector<float> &position, vector<float> &color);
 void do_point(int x, int y);
 void do_solid_line(int x, int y);
-void do_line(int x, int y);
+void do_line(glm::vec3 &coords);
 void do_triangle(int x, int y);
 void do_triangle_strip(int x, int y);
 
@@ -70,6 +71,7 @@ void do_triangle_background(int x, int y, ImageIO *image, vector<float> &backgro
 void generate_point_background(int x, int y, ImageIO *image, vector<float> &position, vector<float> &color);
 void draw_background(int background_n);
 void set_matrix();
+
 
 int mousePos[2]; // x,y coordinate of the mouse position
 
@@ -212,10 +214,10 @@ int numSplines;
 float s = 0.5;
 
 glm::mat4 basis = glm::mat4(
-  -s, 2-s, s-2, s,
-  2*s, s-3, 3-2*s, -s,
-  -s, 0, s, 0,
-  0, 1, 0, 0
+  -s, 2*s, -s, 0,
+  2-s, s-3, 0, 1,
+  s-2, 3-2*s, s, 0,
+  s, -s, 0, 0
 );
 
 
@@ -675,7 +677,13 @@ void fill_lines()
   lines.clear(), line_colors.clear();
 
   cout << glm::to_string(basis) << '\n';
-  glm::mat4x3 control;
+
+  // 3 columns, 4 rows
+  glm::mat3x4 control;
+  
+
+  float step = 0.01f;
+  float u = 0.0f;
 
   for (int i = 0; i < splines->numControlPoints - 3; ++i) {
     Point p1 = splines->points[i];
@@ -683,13 +691,23 @@ void fill_lines()
     Point p3 = splines->points[i+2];
     Point p4 = splines->points[i+3];
 
-    control = glm::mat4x3(
-        p1.x, p1.y, p1.z, 
-        p2.x, p2.y, p2.z, 
-        p3.x, p3.y, p3.z, 
-        p4.x, p4.y, p4.z);
+    control = glm::mat3x4(
+        p1.x, p2.x, p3.x, p4.x, 
+        p1.y, p2.y, p3.y, p4.y, 
+        p1.z, p2.z, p3.z, p4.z);
 
-    cout << glm::to_string(control) << '\n';
+    glm::mat3x4 m = basis * control;
+
+    while (u <= 1.0) {
+
+      glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
+      glm::vec3 position = us * m;
+      do_line(position);
+      u += step;
+      
+    }
+
+    u = 0.0f;
   }
 
   // set up vbo and vao
@@ -1028,10 +1046,27 @@ void do_point(int x, int y)
 }
 
 /* Create a point for line mode */
-void do_line(int x, int y)
+void do_line(glm::vec3 &coords)
 {
-  generate_point(x, y, lines, line_colors);
+  generate_point_new(coords, lines, line_colors);
 }
+
+void generate_point_new(glm::vec3 &coords, vector<float> &position, vector<float> &color)
+{
+
+  float c = 1.0f;
+
+  // assign positions and colors
+  position.push_back(coords.x);
+  position.push_back(coords.y);
+  position.push_back(coords.z);
+  color.push_back(c);
+  color.push_back(c);
+  color.push_back(c);
+  color.push_back(alpha);
+}
+
+
 
 /* Create a point for solid wireframe */
 void do_solid_line(int x, int y)
