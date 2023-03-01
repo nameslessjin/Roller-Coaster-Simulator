@@ -71,6 +71,8 @@ void do_triangle_background(int x, int y, ImageIO *image, vector<float> &backgro
 void generate_point_background(int x, int y, ImageIO *image, vector<float> &position, vector<float> &color);
 void draw_background(int background_n);
 void set_matrix();
+glm::vec3 catmull_rom(float u, glm::mat3x4 &m);
+void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m);
 
 
 int mousePos[2]; // x,y coordinate of the mouse position
@@ -681,8 +683,7 @@ void fill_lines()
   glm::vec3 position, init_pos;
   Point p1, p2, p3, p4;
 
-  float step = 0.1f;
-  float u = 0.0f;
+  float step = 0.1f, u = 0.0f, max_line_length = 0.01;
   int count = 0;
 
   for (int i = 0; i < splines->numControlPoints - 3; ++i) {
@@ -698,31 +699,42 @@ void fill_lines()
 
     m = basis * control;
 
-    while (u <= 1.0) {
-      glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
+    subdivide(0, 1, max_line_length, m);
 
-      if (lines.size() > 3) {
-        do_line(position);
-      }
+    // while (u <= 1.0) {
 
-      position = us * m;
-      ++count;
+    //   if (lines.size() > 3) {
+    //     do_line(position);
+    //   }
 
-      if (lines.size() == 0)
-        init_pos = position;
+    //   position = catmull_rom(u, m);
 
-      do_line(position);
-      u += step;
-    }
+    //   ++count;
+
+    //   if (lines.size() == 0)
+    //     init_pos = position;
+
+    //   do_line(position);
+    //   u += step;
+    // }
 
     u = 0.0f;
   }
 
-  do_line(position);
-  do_line(init_pos);
+  // do_line(position);
+  // do_line(init_pos);
 
   // set up vbo and vao
   set_lines_buffer();
+}
+
+glm::vec3 catmull_rom(float u, glm::mat3x4 &m) {
+
+  glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
+  glm::vec3 position = us * m;
+
+  return position;
+
 }
 
 /* Generate points for triangle mode */
@@ -1342,4 +1354,19 @@ void set_matrix()
   // set variable
   pipelineProgram->SetModelViewMatrix(m);
   pipelineProgram->SetProjectionMatrix(p);
+}
+
+void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m) {
+
+  float umid = (u0 + u1) / 2;
+  glm::vec3 x0 = catmull_rom(u0, m);
+  glm::vec3 x1 = catmull_rom(u1, m);
+
+  if (glm::length(x1 - x0) > max_line_length) {
+    subdivide(u0, umid, max_line_length, m);
+    subdivide(umid, u1, max_line_length, m);
+  } else {
+    do_line(x0);
+    do_line(x1);
+  }
 }
