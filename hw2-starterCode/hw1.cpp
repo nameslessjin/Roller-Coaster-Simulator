@@ -40,23 +40,21 @@ using namespace std;
 
 // forward declaration
 // fill positions and color array
-void fill_points();
+void get_vertices();
 void fill_lines();
 
-void generate_point(glm::vec3 &coords, vector<float> &position, vector<float> &color);
-void do_point(int x, int y);
-void do_line(glm::vec3 &coords);
+void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color);
+void do_vertex(struct Pos &coords);
 
 // set up vbo and vao
 void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &vao);
-void set_points_buffer();
-void set_lines_buffer();
+void set_ebo(vector<int> &indexes, GLuint &ebo);
 
 // background image
 void set_matrix();
 
 // hw2
-glm::vec3 catmull_rom(float u, glm::mat3x4 &m);
+struct Pos catmull_rom(float u, glm::mat3x4 &m);
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m);
 
 
@@ -95,7 +93,8 @@ MODE_STATE mode = POINT;
 
 // animation mode
 int animation = 0;
-int counter = 0;
+int counter = 0, start = 0;
+glm::vec3 v;
 
 // state of the world
 float landRotate[3] = {0.0f, 0.0f, 0.0f};
@@ -115,14 +114,13 @@ char windowTitle[512] = "CSCI 420 homework II";
 
 // Input images
 
-// points
-vector<float> points, point_colors;
-GLuint vao_point;
+// vertices
+vector<float> vertices, vertex_colors, vertex_tans;
+GLuint vao_vertices;
 
 // lines
-vector<float> lines, line_colors;
-GLuint vao_line;
-
+vector<int> lines;
+GLuint ebo_line;
 
 OpenGLMatrix matrix;
 BasicPipelineProgram *pipelineProgram;
@@ -143,13 +141,28 @@ struct Spline
   Point * points;
 };
 
+// Coordinates and tangents for each position
+struct Pos
+{
+  glm::vec3 position;
+  glm::vec3 position_tan;
+};
+
+// Frenet Frame
+struct Frenet
+{
+  glm::vec3 point;
+  glm::vec3 tangent;
+  glm::vec3 binormal;
+  glm::vec3 normal;
+};
+
 // the spline array 
 Spline * splines;
 // total number of splines 
 int numSplines;
 
 float s = 0.5;
-
 glm::mat4 basis = glm::mat4(
   -s, 2*s, -s, 0,
   2-s, s-3, 0, 1,
@@ -320,7 +333,6 @@ void displayFunc()
                 0.0, 0.0, 0.0, 
                 0.0, 1.0, 0.0);
 
-
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
   matrix.Rotate(landRotate[0], 1, 0, 0);
@@ -341,8 +353,9 @@ void displayFunc()
   {
   default:
     glUniform1i(loc, 0);
-    glBindVertexArray(vao_line);
-    glDrawArrays(GL_LINES, 0, lines.size() / 3);
+    glBindVertexArray(vao_vertices);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
+    glDrawElements(GL_LINES, lines.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     break;
   }
@@ -352,6 +365,19 @@ void displayFunc()
 
 void idleFunc()
 {
+
+  int index = counter * 3;
+
+  glm::vec3 p = glm::vec3(vertices[index], vertices[index + 1], vertices[index + 2]);
+  glm::vec3 t = glm::vec3(vertex_tans[index], vertex_tans[index + 1], vertex_tans[index + 2]);
+  
+  if (counter == 0) {
+    v = glm::vec3(0, 0, 0);
+  }
+
+
+
+  ++counter;
 
   // make the screen update
   glutPostRedisplay();
@@ -498,7 +524,6 @@ void keyboardFunc(unsigned char key, int x, int y)
   // So we use 't' for translate
   case 't':
     controlState = TRANSLATE;
-    fill_points();
     break;
   }
 }
@@ -515,6 +540,7 @@ void initScene(int argc, char *argv[])
   if (ret != 0)
     abort();
 
+  get_vertices();
   fill_lines();
 
   glEnable(GL_DEPTH_TEST);
@@ -596,92 +622,83 @@ int main(int argc, char ** argv)
   glutMainLoop();
 }
 
-/* Generate points for point mode */
-void fill_points()
-{
-  points.clear(), point_colors.clear();
-  for (int x = 0; x < image_width; ++x)
-    for (int y = 0; y < image_height; ++y)
-      do_point(x, y);
-
-  // set up vbo and vao
-  set_points_buffer();
-}
-
-/* Generate points for line mode */
-void fill_lines()
-{
-  lines.clear(), line_colors.clear();
+void get_vertices() {
+  vertices.clear(); vertex_colors.clear();
 
   // 3 columns, 4 rows
   glm::mat3x4 control, m; 
   glm::vec3 position, init_pos;
   Point p1, p2, p3, p4;
 
-  float step = 0.1f, u = 0.0f, max_line_length = 0.01;
-  int count = 0;
+  float max_line_length = 0.0001;
 
-  for (int i = 0; i < splines->numControlPoints - 3; ++i) {
-    p1 = splines->points[i];
-    p2 = splines->points[i+1];
-    p3 = splines->points[i+2];
-    p4 = splines->points[i+3];
+  for (int s = 0; s < numSplines; ++s) {
 
-    control = glm::mat3x4(
-        p1.x, p2.x, p3.x, p4.x, 
-        p1.y, p2.y, p3.y, p4.y, 
-        p1.z, p2.z, p3.z, p4.z);
+    Spline spline = splines[s];
 
-    m = basis * control;
+    for (int i = 0; i < spline.numControlPoints - 3; ++i) {
+      p1 = spline.points[i];
+      p2 = spline.points[i+1];
+      p3 = spline.points[i+2];
+      p4 = spline.points[i+3];
 
-    subdivide(0, 1, max_line_length, m);
+      control = glm::mat3x4(
+          p1.x, p2.x, p3.x, p4.x, 
+          p1.y, p2.y, p3.y, p4.y, 
+          p1.z, p2.z, p3.z, p4.z);
 
-    // while (u <= 1.0) {
+      m = basis * control;
 
-    //   if (lines.size() > 3) {
-    //     do_line(position);
-    //   }
-
-    //   position = catmull_rom(u, m);
-
-    //   ++count;
-
-    //   if (lines.size() == 0)
-    //     init_pos = position;
-
-    //   do_line(position);
-    //   u += step;
-    // }
-
-    // u = 0.0f;
+      subdivide(0, 1, max_line_length, m);
+    }
   }
 
-  // do_line(position);
-  // do_line(init_pos);
-
-  // set up vbo and vao
-  set_lines_buffer();
+  set_one_vbo_one_vao(vertices, vertex_colors, vao_vertices);
 }
 
-glm::vec3 catmull_rom(float u, glm::mat3x4 &m) {
+
+/* Generate points for line mode */
+void fill_lines()
+{
+  lines.clear();
+
+  int index = 1;
+  for (; index < vertices.size() / 3; ++index) {
+    lines.push_back(index - 1);
+    lines.push_back(index);
+  }
+
+  lines.push_back(index - 1);
+  lines.push_back(0);
+
+  set_ebo(lines, ebo_line);
+}
+
+struct Pos catmull_rom(float u, glm::mat3x4 &m) {
 
   glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
+  glm::vec4 us_tan = glm::vec4(3 * powf(u, 2.0f), 2 * u, 1, 0);
   glm::vec3 position = us * m;
+  glm::vec3 position_tan = us_tan * m;
 
-  return position;
+  struct Pos pos = {position, position_tan};
+
+  return pos;
 
 }
 
-/* set up vbo and vao for point mode */
-void set_points_buffer()
-{
-  set_one_vbo_one_vao(points, point_colors, vao_point);
-}
 
-/* set up vbo and vao for line mode */
-void set_lines_buffer()
-{
-  set_one_vbo_one_vao(lines, line_colors, vao_line);
+void set_ebo(vector<int> &indexes, GLuint &ebo) {
+
+  int size = sizeof(int) * indexes.size();
+
+  glGenBuffers(1, &ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indexes.data(), GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+
 }
 
 /* set up a generic vbo and vao */
@@ -723,34 +740,34 @@ void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &
 }
 
 
-/* Create a point for point mode */
-void do_point(int x, int y)
-{
-  // generate_point(x, y, points, point_colors);
+void do_vertex(struct Pos &coords) {
+  generate_point(coords, vertices, vertex_colors);
 }
 
-/* Create a point for line mode */
-void do_line(glm::vec3 &coords)
-{
-  generate_point(coords, lines, line_colors);
-}
 
 /* Universal vertices position and color generator */
-void generate_point(glm::vec3 &coords, vector<float> &position, vector<float> &color)
+void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color)
 {
 
   float c = 1.0f;
+  glm::vec3 p = coords.position;
+  glm::vec3 t = coords.position_tan;
 
   // assign positions and colors
-  position.push_back(coords.x);
-  position.push_back(coords.y);
-  position.push_back(coords.z);
+  position.push_back(p.x);
+  position.push_back(p.y);
+  position.push_back(p.z);
   color.push_back(c);
   color.push_back(c);
   color.push_back(c);
   color.push_back(alpha);
-}
 
+  // assign tangent 
+  vertex_tans.push_back(t.x);
+  vertex_tans.push_back(t.y);
+  vertex_tans.push_back(t.z);
+
+}
 
 
 void set_matrix()
@@ -773,14 +790,19 @@ void set_matrix()
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m) {
 
   float umid = (u0 + u1) / 2;
-  glm::vec3 x0 = catmull_rom(u0, m);
-  glm::vec3 x1 = catmull_rom(u1, m);
+  struct Pos x0 = catmull_rom(u0, m);
+  struct Pos x1 = catmull_rom(u1, m);
 
-  if (glm::length(x1 - x0) > max_line_length) {
+  if (glm::length(x1.position - x0.position) > max_line_length) {
     subdivide(u0, umid, max_line_length, m);
     subdivide(umid, u1, max_line_length, m);
   } else {
-    do_line(x0);
-    do_line(x1);
+    do_vertex(x0);
   }
 }
+
+void calculate_fernet(struct Frenet &f) {
+  glm::vec3 n = glm::cross(f.binormal, f.tangent);
+  glm::vec3 b = glm::cross(f.tangent, f.normal);
+}
+
