@@ -42,35 +42,20 @@ using namespace std;
 // fill positions and color array
 void fill_points();
 void fill_lines();
-void fill_triangles();
-void fill_triangle_strip();
-void get_surrounding_points_height(int x, int y);
 
-void generate_point_new(glm::vec3 &coords, vector<float> &position, vector<float> &color);
-void generate_point(int x, int y, vector<float> &position, vector<float> &color);
+void generate_point(glm::vec3 &coords, vector<float> &position, vector<float> &color);
 void do_point(int x, int y);
-void do_solid_line(int x, int y);
 void do_line(glm::vec3 &coords);
-void do_triangle(int x, int y);
-void do_triangle_strip(int x, int y);
 
 // set up vbo and vao
 void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &vao);
-void set_ebo(vector<float> &position, vector<float> &color, GLuint &ebo, GLuint &vao);
 void set_points_buffer();
 void set_lines_buffer();
-void set_triangles_buffer();
-void set_smooth_buffer();
-void set_solid_line_buffer();
-void set_triangle_strip_buffer();
 
 // background image
-void get_background_image(ImageIO *image, vector<float> &background_position, vector<float> &background_color, GLuint &background_vao, string name);
-void fill_triangles_background(ImageIO *image, vector<float> &background_position, vector<float> &background_color, GLuint &background_vao);
-void do_triangle_background(int x, int y, ImageIO *image, vector<float> &background_position, vector<float> &background_color);
-void generate_point_background(int x, int y, ImageIO *image, vector<float> &position, vector<float> &color);
-void draw_background(int background_n);
 void set_matrix();
+
+// hw2
 glm::vec3 catmull_rom(float u, glm::mat3x4 &m);
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m);
 
@@ -103,39 +88,19 @@ typedef enum
 {
   POINT,
   LINE,
-  TRIANGLE,
   SMOOTH,
   SOLID_WIREFRAME,
-  TRIANGLE_STRIP,
-  TRIANGLE_ELEMENT
 } MODE_STATE;
 MODE_STATE mode = POINT;
 
 // animation mode
 int animation = 0;
 int counter = 0;
-int start = 0;
-int shake = 0;
 
 // state of the world
 float landRotate[3] = {0.0f, 0.0f, 0.0f};
 float landTranslate[3] = {0.0f, 0.0f, 0.0f};
 float landScale[3] = {1.0f, 1.0f, 1.0f};
-
-// state of the background1
-float backgroundRotate1[3] = {0.0f, 0.0f, 0.0f};
-float backgroundTranslate1[3] = {0.0f, 100.0f, 100.0f};
-float backgroundScale1[3] = {1.5f, 4.0f, 1.5f};
-
-// state of the background2
-float backgroundRotate2[3] = {45.0f, 0.0f, 0.0f};
-float backgroundTranslate2[3] = {0.0f, 100.0f, 100.0f};
-float backgroundScale2[3] = {1.5f, 4.0f, 1.0f};
-
-// state of the background3
-float backgroundRotate3[3] = {45.0f, 0.0f, 0.0f};
-float backgroundTranslate3[3] = {0.0f, 100.0f, 100.0f};
-float backgroundScale3[3] = {2.5f, 2.5f, 2.5f};
 
 // attributes for window and image
 int windowWidth = 1280;
@@ -149,10 +114,6 @@ float red = 0, green = 0, blue = 0, alpha = 1;
 char windowTitle[512] = "CSCI 420 homework II";
 
 // Input images
-ImageIO *heightmapImage;
-ImageIO *backgroundImage1;
-ImageIO *backgroundImage2;
-ImageIO *backgroundImage3;
 
 // points
 vector<float> points, point_colors;
@@ -162,32 +123,6 @@ GLuint vao_point;
 vector<float> lines, line_colors;
 GLuint vao_line;
 
-// triangles
-vector<float> triangles, triangle_colors;
-GLuint vao_triangle;
-
-// smooth
-vector<float> p_left, p_right, p_up, p_down;
-GLuint vao_smooth;
-
-// solid-wireframe
-vector<float> solid_line_colors, solid_lines;
-GLuint vao_solid_line;
-
-// triangle_strip
-vector<float> triangle_strip, triangle_strip_colors;
-GLuint vao_triangle_strip;
-
-// triangle_element
-GLuint ebo_triangle_element, vao_triangle_element;
-
-// background
-vector<float> background_position_1, background_color_1;
-GLuint background_vao_1;
-vector<float> background_position_2, background_color_2;
-GLuint background_vao_2;
-vector<float> background_position_3, background_color_3;
-GLuint background_vao_3;
 
 OpenGLMatrix matrix;
 BasicPipelineProgram *pipelineProgram;
@@ -718,7 +653,7 @@ void fill_lines()
     //   u += step;
     // }
 
-    u = 0.0f;
+    // u = 0.0f;
   }
 
   // do_line(position);
@@ -737,89 +672,6 @@ glm::vec3 catmull_rom(float u, glm::mat3x4 &m) {
 
 }
 
-/* Generate points for triangle mode */
-void fill_triangles()
-{
-  triangles.clear(), triangle_colors.clear();
-  p_left.clear(), p_right.clear(), p_up.clear(), p_down.clear();
-  for (int y = 0; y < image_height; ++y)
-  {
-    for (int x = 0; x < image_width; ++x)
-    {
-
-      // we want a triangle like
-      //  __
-      // | /
-      // |/
-      // the down point is the current point
-      // and
-      //  /|
-      // /_|
-      // the down left point is the current point
-
-      // the top-right point is always present
-      // so we don't pick the topmost and right most points as starting point
-      if (x < image_width - 1 && y < image_height - 1)
-      {
-
-        // first triangle
-        // bottom-left
-        do_triangle(x, y);
-
-        // this is for smooth mode
-        get_surrounding_points_height(x, y);
-
-        // top-left
-        do_triangle(x, y + 1);
-        get_surrounding_points_height(x, y + 1);
-
-        // top-right
-        do_triangle(x + 1, y + 1);
-        get_surrounding_points_height(x + 1, y + 1);
-
-        // second triangle
-        // bottom-left
-        do_triangle(x, y);
-        get_surrounding_points_height(x, y);
-
-        // bottom-right
-        do_triangle(x + 1, y);
-        get_surrounding_points_height(x + 1, y);
-
-        // top-right
-        do_triangle(x + 1, y + 1);
-        get_surrounding_points_height(x + 1, y + 1);
-      }
-    }
-  }
-
-  // set up vbo and vao
-  set_triangles_buffer();
-  set_smooth_buffer();
-  set_ebo(triangles, triangle_colors, ebo_triangle_element, vao_triangle_element);
-}
-
-/* generate points for triangle strip */
-void fill_triangle_strip()
-{
-  triangle_strip.clear(), triangle_strip_colors.clear();
-  for (int y = 0; y < image_height - 1; ++y)
-  {
-    for (int x = 0; x < image_width; ++x)
-    {
-
-      // add vertices in zigzag order
-      int row = y & 1 ? (image_width - x - 1) : x;
-
-      do_triangle_strip(row, y);
-      do_triangle_strip(row, y + 1);
-    }
-  }
-
-  // set up vbo and vao
-  set_triangle_strip_buffer();
-}
-
 /* set up vbo and vao for point mode */
 void set_points_buffer()
 {
@@ -830,97 +682,6 @@ void set_points_buffer()
 void set_lines_buffer()
 {
   set_one_vbo_one_vao(lines, line_colors, vao_line);
-}
-
-/* set up vbo and vao for triangle mode */
-void set_triangles_buffer()
-{
-  set_one_vbo_one_vao(triangles, triangle_colors, vao_triangle);
-}
-
-/* set up vbo and vao for smoothened height field */
-void set_smooth_buffer()
-{
-  // p_left, right, up, down have the same size
-  int p_size = sizeof(float) * p_left.size();
-  int triangles_size = sizeof(float) * triangles.size();
-  int triangle_colors_size = sizeof(float) * triangle_colors.size();
-  uintptr_t offset = 0;
-
-  // initialize vbos
-  GLuint vbo_p_left, vbo_p_right, vbo_p_up, vbo_p_down, vbo_smooth_triangle;
-  glGenBuffers(1, &vbo_p_left);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_left);
-  glBufferData(GL_ARRAY_BUFFER, p_size, p_left.data(), GL_STATIC_DRAW);
-
-  glGenBuffers(1, &vbo_p_right);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_right);
-  glBufferData(GL_ARRAY_BUFFER, p_size, p_right.data(), GL_STATIC_DRAW);
-
-  glGenBuffers(1, &vbo_p_up);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_up);
-  glBufferData(GL_ARRAY_BUFFER, p_size, p_up.data(), GL_STATIC_DRAW);
-
-  glGenBuffers(1, &vbo_p_down);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_down);
-  glBufferData(GL_ARRAY_BUFFER, p_size, p_down.data(), GL_STATIC_DRAW);
-
-  glGenBuffers(1, &vbo_smooth_triangle);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_smooth_triangle);
-  glBufferData(GL_ARRAY_BUFFER, triangles_size + triangle_colors_size, NULL, GL_STATIC_DRAW);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, triangles_size, triangles.data());
-  glBufferSubData(GL_ARRAY_BUFFER, triangles_size, triangle_colors_size, triangle_colors.data());
-
-  // initialize vao
-  glGenVertexArrays(1, &vao_smooth);
-  glBindVertexArray(vao_smooth);
-
-  // send to shader
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_smooth_triangle);
-  GLuint loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
-
-  offset += triangles_size;
-  loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, 0, (const void *)(offset));
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_left);
-  loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "p_left");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_right);
-  loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "p_right");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_up);
-  loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "p_up");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_p_down);
-  loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "p_down");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
-  // unbind vbo and vao
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-}
-
-/* set up vbo and vao for solid_wireframe */
-void set_solid_line_buffer()
-{
-  set_one_vbo_one_vao(solid_lines, solid_line_colors, vao_solid_line);
-}
-
-/* set up vbo and vao for triangle_strip */
-void set_triangle_strip_buffer()
-{
-  set_one_vbo_one_vao(triangle_strip, triangle_strip_colors, vao_triangle_strip);
 }
 
 /* set up a generic vbo and vao */
@@ -961,120 +722,21 @@ void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &
   glBindVertexArray(0);
 }
 
-/* set up generic ebo */
-void set_ebo(vector<float> &position, vector<float> &color, GLuint &ebo, GLuint &vao)
-{
-
-  vector<int> indices;
-  vector<float> vertices, vertices_color;
-  map<vector<float>, int> mp;
-
-  int position_i = 0, color_i, index = 0;
-  float x = 0, y = 0, z = 0;
-  float r = 0, g = 0, b = 0, a = 0;
-  intptr_t offset = 0;
-
-  // iterate through each index in position and color
-  for (int i = 0; i < position.size() / 3; ++i)
-  {
-    x = position[position_i++], y = position[position_i++], z = position[position_i++];
-    r = color[color_i++], g = color[color_i++], b = color[color_i++], a = color[color_i++];
-
-    // map each pixel to a index
-    vector<float> combo;
-    combo.push_back(x), combo.push_back(y), combo.push_back(z);
-
-    // if the combo is not in map already, add to map with the cur index, and add index to indices
-    // else add the combo index to indices
-    // for vertices and vertices_color, we want to have nonrepetitive pixel inside, the index of vertices
-    // should match that of indices
-    if (mp.find(combo) == mp.end())
-    {
-      mp[combo] = index;
-      vertices.push_back(x);
-      vertices.push_back(y);
-      vertices.push_back(z);
-      vertices_color.push_back(r);
-      vertices_color.push_back(g);
-      vertices_color.push_back(b);
-      vertices_color.push_back(a);
-      indices.push_back(index++);
-    }
-    else
-    {
-      indices.push_back(mp[combo]);
-    }
-  }
-
-  int indices_size = sizeof(int) * indices.size();
-  int size = sizeof(float) * vertices.size();
-  int color_size = sizeof(float) * vertices_color.size();
-
-  // set up vbo and ebo
-  // note that the vbo here is different from triangle mode
-  // each pixel only appears once
-  GLuint vbo;
-  glGenBuffers(1, &vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, size + color_size, NULL, GL_STATIC_DRAW);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, size, vertices.data());
-  glBufferSubData(GL_ARRAY_BUFFER, size, color_size, vertices_color.data());
-
-  glGenBuffers(1, &ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices.data(), GL_STATIC_DRAW);
-
-  // set up vao
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
-
-  GLuint loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (void *)offset);
-
-  offset += size;
-  loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color");
-  glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, 0, (void *)offset);
-
-  // unbind vao, vbo and ebo
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-}
-
-/* get the height of neighbor points */
-void get_surrounding_points_height(int x, int y)
-{
-
-  // if the current point is on an edge without neighbor(s) on some side
-  // we take the height of the point itself
-  height = x == 0 ? heightmapImage->getPixel(x, y, 0) : heightmapImage->getPixel(x - 1, y, 0);
-  p_left.push_back(height * scale);
-
-  height = x == image_width - 1 ? heightmapImage->getPixel(x, y, 0) : heightmapImage->getPixel(x + 1, y, 0);
-  p_right.push_back(height * scale);
-
-  height = y == image_height - 1 ? heightmapImage->getPixel(x, y, 0) : heightmapImage->getPixel(x, y + 1, 0);
-  p_up.push_back(height * scale);
-
-  height = y == 0 ? heightmapImage->getPixel(x, y, 0) : heightmapImage->getPixel(x, y - 1, 0);
-  p_down.push_back(height * scale);
-}
 
 /* Create a point for point mode */
 void do_point(int x, int y)
 {
-  generate_point(x, y, points, point_colors);
+  // generate_point(x, y, points, point_colors);
 }
 
 /* Create a point for line mode */
 void do_line(glm::vec3 &coords)
 {
-  generate_point_new(coords, lines, line_colors);
+  generate_point(coords, lines, line_colors);
 }
 
-void generate_point_new(glm::vec3 &coords, vector<float> &position, vector<float> &color)
+/* Universal vertices position and color generator */
+void generate_point(glm::vec3 &coords, vector<float> &position, vector<float> &color)
 {
 
   float c = 1.0f;
@@ -1090,254 +752,6 @@ void generate_point_new(glm::vec3 &coords, vector<float> &position, vector<float
 }
 
 
-
-/* Create a point for solid wireframe */
-void do_solid_line(int x, int y)
-{
-
-  // match the image center to the world center
-  int world_x = x - image_center_x;
-  int world_y = y - image_center_y;
-
-  // get the greyscale from the image
-  height = heightmapImage->getPixel(x, y, 0);
-  height *= scale;
-
-  // assign positions and colors
-  solid_lines.push_back(-world_x);
-  solid_lines.push_back(height);
-  solid_lines.push_back(-world_y);
-  solid_line_colors.push_back(0.0);
-  solid_line_colors.push_back(0.0);
-  solid_line_colors.push_back(0.0);
-  solid_line_colors.push_back(alpha);
-}
-
-/* Create a point for triangle mode */
-void do_triangle(int x, int y)
-{
-  generate_point(x, y, triangles, triangle_colors);
-}
-
-/* Create a point for triangle strip */
-void do_triangle_strip(int x, int y)
-{
-  generate_point(x, y, triangle_strip, triangle_strip_colors);
-}
-
-/* Universal vertices position and color generator */
-void generate_point(int x, int y, vector<float> &position, vector<float> &color)
-{
-
-  // match the image center to the world center
-  int world_x = x - image_center_x;
-  int world_y = y - image_center_y;
-
-  // get the greyscale from the image
-  height = heightmapImage->getPixel(x, y, 0);
-  red = green = blue = height / 255.0;
-
-  // get color for each pixel in RGB mode
-  if (color_mode == RGB)
-  {
-    red = heightmapImage->getPixel(x, y, 0) / 255.0;
-    green = heightmapImage->getPixel(x, y, 1) / 255.0;
-    blue = heightmapImage->getPixel(x, y, 2) / 255.0;
-    height = (red + green + blue) * 255.0 / 3;
-  }
-
-  height *= scale;
-
-  // assign positions and colors
-  position.push_back(-world_x);
-  position.push_back(height);
-  position.push_back(-world_y);
-  color.push_back(red);
-  color.push_back(green);
-  color.push_back(blue);
-  color.push_back(alpha);
-}
-
-/* Load an image for background layer */
-void get_background_image(ImageIO *image, vector<float> &background_position, vector<float> &background_color, GLuint &background_vao, string name)
-{
-
-  if (animation == 1)
-  {
-    image = new ImageIO();
-    string filename = "heightmap/" + name + ".jpg";
-    if (image->loadJPEG(filename.c_str()) != ImageIO::OK)
-    {
-      cout << "Error reading image "
-           << "heightmap/horror.jpg"
-           << "." << endl;
-      exit(EXIT_FAILURE);
-    }
-
-    // background layer only has triangle mode
-    fill_triangles_background(image, background_position, background_color, background_vao);
-  }
-}
-
-/* background triangle */
-void fill_triangles_background(ImageIO *image, vector<float> &background_position, vector<float> &background_color, GLuint &background_vao)
-{
-  int background_width = image->getWidth();
-  int background_height = image->getHeight();
-  int background_center_x = background_width / 2;
-  int background_center_y = background_height / 2;
-
-  background_position.clear(), background_color.clear();
-  for (int y = 0; y < background_height; ++y)
-  {
-    for (int x = 0; x < background_width; ++x)
-    {
-
-      // we want a triangle like
-      //  __
-      // | /
-      // |/
-      // the down point is the current point
-      // and
-      //  /|
-      // /_|
-      // the down left point is the current point
-
-      // the top-right point is always present
-      // so we don't pick the topmost and right most points as starting point
-      if (x < background_width - 1 && y < background_height - 1)
-      {
-
-        // first triangle
-        // bottom-left
-        do_triangle_background(x, y, image, background_position, background_color);
-
-        // top-left
-        do_triangle_background(x, y + 1, image, background_position, background_color);
-
-        // top-right
-        do_triangle_background(x + 1, y + 1, image, background_position, background_color);
-
-        // second triangle
-        // bottom-left
-        do_triangle_background(x, y, image, background_position, background_color);
-
-        // bottom-right
-        do_triangle_background(x + 1, y, image, background_position, background_color);
-
-        // top-right
-        do_triangle_background(x + 1, y + 1, image, background_position, background_color);
-      }
-    }
-  }
-
-  set_one_vbo_one_vao(background_position, background_color, background_vao);
-}
-
-/* Create a point for background triangle */
-void do_triangle_background(int x, int y, ImageIO *image, vector<float> &background_position, vector<float> &background_color)
-{
-  generate_point_background(x, y, image, background_position, background_color);
-}
-
-/* Universal vertices position and color generator for background */
-void generate_point_background(int x, int y, ImageIO *image, vector<float> &position, vector<float> &color)
-{
-
-  int background_width = image->getWidth();
-  int background_height = image->getHeight();
-  int background_center_x = background_width / 2;
-  int background_center_y = background_height / 2;
-
-  // match the image center to the world center
-  int world_x = x - background_center_x;
-  int world_y = y - background_center_y;
-
-  // get the greyscale from the image
-  height = image->getPixel(x, y, 0);
-  red = green = blue = height / 255.0;
-
-  // get color for each pixel in RGB mode
-  if (image->getBytesPerPixel() == 3)
-  {
-    red = image->getPixel(x, y, 0) / 255.0;
-    green = image->getPixel(x, y, 1) / 255.0;
-    blue = image->getPixel(x, y, 2) / 255.0;
-    height = (red + green + blue) * 255.0 / 3;
-  }
-
-  height *= 0.05;
-
-  // assign positions and colors
-  position.push_back(-world_x);
-  position.push_back(height);
-  position.push_back(-world_y);
-  color.push_back(red);
-  color.push_back(green);
-  color.push_back(blue);
-  color.push_back(alpha);
-}
-
-void draw_background(int background_n) {
-
-  // reset modelview matrix
-  matrix.PopMatrix();
-  matrix.PushMatrix();
-  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
-  matrix.LoadIdentity();
-  float eye_z = 150 + pow((image_height - 128) / 128, 1.5) * 50;
-  matrix.LookAt(0, image_center_y + 50, eye_z, 0, 0, 0, 0, 1, 0);
-
-  float *backgroundRotate;
-  float *backgroundTranslate;
-  float *backgroundScale;
-  GLuint *background_vao;
-  int num_vertices = 0;
-
-  // chose background layer to draw
-  switch(background_n) {
-    case 1:
-      backgroundRotate = backgroundRotate1;
-      backgroundTranslate = backgroundTranslate1;
-      backgroundScale = backgroundScale1;
-      background_vao = &background_vao_1;
-      num_vertices = background_position_1.size();
-      break;
-    case 2:
-      backgroundRotate = backgroundRotate2;
-      backgroundTranslate = backgroundTranslate2;
-      backgroundScale = backgroundScale2;
-      background_vao = &background_vao_2;
-      num_vertices = background_position_2.size();
-      break;
-    case 3:
-      backgroundRotate = backgroundRotate3;
-      backgroundTranslate = backgroundTranslate3;
-      backgroundScale = backgroundScale3;
-      background_vao = &background_vao_3;
-      num_vertices = background_position_3.size();
-      break;
-    default:
-      backgroundRotate = backgroundRotate1;
-      backgroundTranslate = backgroundTranslate1;
-      backgroundScale = backgroundScale1;
-      background_vao = &background_vao_1;
-      num_vertices = background_position_1.size();
-      break;
-  }
-
-  // Transformation
-  matrix.Translate(backgroundTranslate[0], backgroundTranslate[1], backgroundTranslate[2]);
-  matrix.Rotate(backgroundRotate[0], 1, 0, 0);
-  matrix.Rotate(backgroundRotate[1], 0, 1, 0);
-  matrix.Rotate(backgroundRotate[2], 0, 0, 1);
-  matrix.Scale(backgroundScale[0], backgroundScale[1], backgroundScale[2]);
-  set_matrix();
-
-  glBindVertexArray(*background_vao);
-  glDrawArrays(GL_TRIANGLES, 0, num_vertices / 3);
-
-}
 
 void set_matrix()
 {
