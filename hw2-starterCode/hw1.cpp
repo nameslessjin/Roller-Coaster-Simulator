@@ -56,6 +56,7 @@ void set_matrix();
 // hw2
 struct Pos catmull_rom(float u, glm::mat3x4 &m);
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m);
+void calculate_fernet(struct Frenet &f);
 
 
 int mousePos[2]; // x,y coordinate of the mouse position
@@ -156,6 +157,8 @@ struct Frenet
   glm::vec3 binormal;
   glm::vec3 normal;
 };
+
+Frenet frenet;
 
 // the spline array 
 Spline * splines;
@@ -329,9 +332,21 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  matrix.LookAt(0.0, 0.0, 5.0, 
-                0.0, 0.0, 0.0, 
-                0.0, 1.0, 0.0);
+  // matrix.LookAt(0.0, 10.0, 5.0, 
+  //               0.0, 0.0, 0.0, 
+  //               0.0, 1.0, 0.0);
+
+  glm::vec3 np = frenet.point + frenet.tangent;
+
+  matrix.LookAt(frenet.point.x, frenet.point.y, frenet.point.z, 
+                np.x, np.y, np.z, 
+                frenet.normal.x, frenet.normal.y, frenet.normal.z);
+
+  cout << " \n";
+  cout << frenet.point.x << " " << frenet.point.y << " " << frenet.point.z << '\n';
+  cout << frenet.tangent.x << " " << frenet.tangent.y << " " << frenet.tangent.z << '\n';
+  cout << frenet.normal.x << " " << frenet.normal.y << " " << frenet.normal.z << '\n';
+
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -366,18 +381,20 @@ void displayFunc()
 void idleFunc()
 {
 
-  int index = counter * 3;
+  if (animation == 1) {
+    ++counter;
+    int index = (counter * 3) % vertices.size();
+    
+    glm::vec3 p = glm::vec3(vertices[index], vertices[index + 1], vertices[index + 2]);
+    glm::vec3 t = glm::vec3(vertex_tans[index], vertex_tans[index + 1], vertex_tans[index + 2]);
 
-  glm::vec3 p = glm::vec3(vertices[index], vertices[index + 1], vertices[index + 2]);
-  glm::vec3 t = glm::vec3(vertex_tans[index], vertex_tans[index + 1], vertex_tans[index + 2]);
-  
-  if (counter == 0) {
-    v = glm::vec3(0, 0, 0);
+    frenet.point = p;
+    frenet.tangent = t;
+
+    calculate_fernet(frenet);
+
+
   }
-
-
-
-  ++counter;
 
   // make the screen update
   glutPostRedisplay();
@@ -512,6 +529,7 @@ void keyboardFunc(unsigned char key, int x, int y)
     break;
 
   case ' ':
+    animation = 1 - animation;
     std::cout << "You pressed the spacebar." << endl;
     break;
 
@@ -630,7 +648,7 @@ void get_vertices() {
   glm::vec3 position, init_pos;
   Point p1, p2, p3, p4;
 
-  float max_line_length = 0.0001;
+  float max_line_length = 0.1;
 
   for (int s = 0; s < numSplines; ++s) {
 
@@ -652,6 +670,15 @@ void get_vertices() {
       subdivide(0, 1, max_line_length, m);
     }
   }
+
+  // initialize frenet
+  glm::vec3 p = glm::vec3(vertices[0], vertices[1], vertices[2]);
+  glm::vec3 t = glm::vec3(vertex_tans[0], vertex_tans[1], vertex_tans[2]);
+
+  frenet.point = p;
+  frenet.tangent = t;
+  frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
+  frenet.binormal = glm::normalize(glm::cross(frenet.tangent, frenet.normal));
 
   set_one_vbo_one_vao(vertices, vertex_colors, vao_vertices);
 }
@@ -679,12 +706,11 @@ struct Pos catmull_rom(float u, glm::mat3x4 &m) {
   glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
   glm::vec4 us_tan = glm::vec4(3 * powf(u, 2.0f), 2 * u, 1, 0);
   glm::vec3 position = us * m;
-  glm::vec3 position_tan = us_tan * m;
+  glm::vec3 position_tan = glm::normalize(us_tan * m);
 
-  struct Pos pos = {position, position_tan};
+  Pos pos = {position, position_tan};
 
   return pos;
-
 }
 
 
@@ -763,6 +789,7 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
   color.push_back(alpha);
 
   // assign tangent 
+  
   vertex_tans.push_back(t.x);
   vertex_tans.push_back(t.y);
   vertex_tans.push_back(t.z);
@@ -790,8 +817,8 @@ void set_matrix()
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m) {
 
   float umid = (u0 + u1) / 2;
-  struct Pos x0 = catmull_rom(u0, m);
-  struct Pos x1 = catmull_rom(u1, m);
+  Pos x0 = catmull_rom(u0, m);
+  Pos x1 = catmull_rom(u1, m);
 
   if (glm::length(x1.position - x0.position) > max_line_length) {
     subdivide(u0, umid, max_line_length, m);
@@ -801,8 +828,10 @@ void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m) {
   }
 }
 
-void calculate_fernet(struct Frenet &f) {
-  glm::vec3 n = glm::cross(f.binormal, f.tangent);
-  glm::vec3 b = glm::cross(f.tangent, f.normal);
+void calculate_fernet(Frenet &f) {
+  glm::vec3 n = glm::normalize(glm::cross(f.binormal, f.tangent));
+  f.normal = n;
+  glm::vec3 b = glm::normalize(glm::cross(f.tangent, f.normal));
+  f.binormal = b;
 }
 
