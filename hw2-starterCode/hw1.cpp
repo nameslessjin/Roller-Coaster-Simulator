@@ -21,7 +21,6 @@
 #include <map>
 #include <glm/gtx/string_cast.hpp>
 
-
 #if defined(WIN32) || defined(_WIN32)
 #ifdef _DEBUG
 #pragma comment(lib, "glew32d.lib")
@@ -62,7 +61,6 @@ void set_matrix();
 struct Pos catmull_rom(float u, glm::mat3x4 &m);
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m);
 void calculate_fernet(struct Frenet &f);
-
 
 int mousePos[2]; // x,y coordinate of the mouse position
 
@@ -134,19 +132,19 @@ OpenGLMatrix matrix;
 BasicPipelineProgram *pipelineProgram;
 
 // HW2
-// represents one control point along the spline 
-struct Point 
+// represents one control point along the spline
+struct Point
 {
   double x;
   double y;
   double z;
 };
-// spline struct 
-// contains how many control points the spline has, and an array of control points 
-struct Spline 
+// spline struct
+// contains how many control points the spline has, and an array of control points
+struct Spline
 {
   int numControlPoints;
-  Point * points;
+  Point *points;
 };
 
 // Coordinates and tangents for each position
@@ -167,50 +165,48 @@ struct Frenet
 
 vector<Frenet> frenets;
 
-// the spline array 
-Spline * splines;
-// total number of splines 
+// the spline array
+Spline *splines;
+// total number of splines
 int numSplines;
 
 float s = 0.5;
 glm::mat4 basis = glm::mat4(
-  -s, 2*s, -s, 0,
-  2-s, s-3, 0, 1,
-  s-2, 3-2*s, s, 0,
-  s, -s, 0, 0
-);
+    -s, 2 * s, -s, 0,
+    2 - s, s - 3, 0, 1,
+    s - 2, 3 - 2 * s, s, 0,
+    s, -s, 0, 0);
 
-
-int loadSplines(char * argv) 
+int loadSplines(char *argv)
 {
-  char * cName = (char *) malloc(128 * sizeof(char));
-  FILE * fileList;
-  FILE * fileSpline;
+  char *cName = (char *)malloc(128 * sizeof(char));
+  FILE *fileList;
+  FILE *fileSpline;
   int iType, i = 0, j, iLength;
 
-  // load the track file 
+  // load the track file
   fileList = fopen(argv, "r");
-  if (fileList == NULL) 
+  if (fileList == NULL)
   {
-    printf ("fileList can't open file\n");
+    printf("fileList can't open file\n");
     exit(1);
   }
-  
-  // stores the number of splines in a global variable 
+
+  // stores the number of splines in a global variable
   fscanf(fileList, "%d", &numSplines);
 
-  splines = (Spline*) malloc(numSplines * sizeof(Spline));
+  splines = (Spline *)malloc(numSplines * sizeof(Spline));
 
-  // reads through the spline files 
-  for (j = 0; j < numSplines; j++) 
+  // reads through the spline files
+  for (j = 0; j < numSplines; j++)
   {
     i = 0;
     fscanf(fileList, "%s", cName);
     fileSpline = fopen(cName, "r");
 
-    if (fileSpline == NULL) 
+    if (fileSpline == NULL)
     {
-      printf ("fileSpline can't open file\n");
+      printf("fileSpline can't open file\n");
       exit(1);
     }
 
@@ -222,10 +218,10 @@ int loadSplines(char * argv)
     splines[j].numControlPoints = iLength;
 
     // saves the data to the struct
-    while (fscanf(fileSpline, "%lf %lf %lf", 
-	   &splines[j].points[i].x, 
-	   &splines[j].points[i].y, 
-	   &splines[j].points[i].z) != EOF) 
+    while (fscanf(fileSpline, "%lf %lf %lf",
+                  &splines[j].points[i].x,
+                  &splines[j].points[i].y,
+                  &splines[j].points[i].z) != EOF)
     {
       i++;
     }
@@ -236,21 +232,21 @@ int loadSplines(char * argv)
   return 0;
 }
 
-int initTexture(const char * imageFilename, GLuint textureHandle)
+int initTexture(const char *imageFilename, GLuint textureHandle)
 {
   // read the texture image
   ImageIO img;
   ImageIO::fileFormatType imgFormat;
   ImageIO::errorType err = img.load(imageFilename, &imgFormat);
 
-  if (err != ImageIO::OK) 
+  if (err != ImageIO::OK)
   {
     printf("Loading texture from %s failed.\n", imageFilename);
     return -1;
   }
 
   // check that the number of bytes is a multiple of 4
-  if (img.getWidth() * img.getBytesPerPixel() % 4) 
+  if (img.getWidth() * img.getBytesPerPixel() % 4)
   {
     printf("Error (%s): The width*numChannels in the loaded image must be a multiple of 4.\n", imageFilename);
     return -1;
@@ -259,17 +255,17 @@ int initTexture(const char * imageFilename, GLuint textureHandle)
   // allocate space for an array of pixels
   int width = img.getWidth();
   int height = img.getHeight();
-  unsigned char * pixelsRGBA = new unsigned char[4 * width * height]; // we will use 4 bytes per pixel, i.e., RGBA
+  unsigned char *pixelsRGBA = new unsigned char[4 * width * height]; // we will use 4 bytes per pixel, i.e., RGBA
 
   // fill the pixelsRGBA array with the image pixels
   memset(pixelsRGBA, 0, 4 * width * height); // set all bytes to 0
   for (int h = 0; h < height; h++)
-    for (int w = 0; w < width; w++) 
+    for (int w = 0; w < width; w++)
     {
       // assign some default byte values (for the case where img.getBytesPerPixel() < 4)
-      pixelsRGBA[4 * (h * width + w) + 0] = 0; // red
-      pixelsRGBA[4 * (h * width + w) + 1] = 0; // green
-      pixelsRGBA[4 * (h * width + w) + 2] = 0; // blue
+      pixelsRGBA[4 * (h * width + w) + 0] = 0;   // red
+      pixelsRGBA[4 * (h * width + w) + 1] = 0;   // green
+      pixelsRGBA[4 * (h * width + w) + 2] = 0;   // blue
       pixelsRGBA[4 * (h * width + w) + 3] = 255; // alpha channel; fully opaque
 
       // set the RGBA channels, based on the loaded image
@@ -301,18 +297,17 @@ int initTexture(const char * imageFilename, GLuint textureHandle)
 
   // query for any errors
   GLenum errCode = glGetError();
-  if (errCode != 0) 
+  if (errCode != 0)
   {
     printf("Texture initialization error. Error code: %d.\n", errCode);
     return -1;
   }
-  
+
   // de-allocate the pixel array -- it is no longer needed
-  delete [] pixelsRGBA;
+  delete[] pixelsRGBA;
 
   return 0;
 }
-
 
 // write a screenshot to the specified filename
 void saveScreenshot(const char *filename)
@@ -339,18 +334,17 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  // matrix.LookAt(0.0, 10.0, 5.0, 
-  //               0.0, 0.0, 0.0, 
+  // matrix.LookAt(0.0, 10.0, 5.0,
+  //               0.0, 0.0, 0.0,
   //               0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
   glm::vec3 np = frenet.point + frenet.tangent;
 
-  matrix.LookAt(frenet.point.x, frenet.point.y, frenet.point.z, 
-                np.x, np.y, np.z, 
+  matrix.LookAt(frenet.point.x, frenet.point.y + 1, frenet.point.z,
+                np.x, np.y, np.z,
                 frenet.normal.x, frenet.normal.y, frenet.normal.z);
-
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -372,9 +366,15 @@ void displayFunc()
   {
   default:
     glUniform1i(loc, 0);
+
     glBindVertexArray(vao_vertices);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
     glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
+
+    glBindVertexArray(vao_cross_section_vertices);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_vertices);
+    glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3, GL_UNSIGNED_INT, 0);
+
     glBindVertexArray(0);
     break;
   }
@@ -385,7 +385,8 @@ void displayFunc()
 void idleFunc()
 {
 
-  if (animation == 1) {
+  if (animation == 1)
+  {
     ++counter;
   }
 
@@ -560,11 +561,11 @@ void initScene(int argc, char *argv[])
   std::cout << "GL error: " << glGetError() << std::endl;
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
-  if (argc<2)
-  {  
-    printf ("usage: %s <trackfile>\n", argv[0]);
+  if (argc < 2)
+  {
+    printf("usage: %s <trackfile>\n", argv[0]);
     exit(0);
   }
 
@@ -577,7 +578,7 @@ int main(int argc, char ** argv)
   std::cout << "Initializing OpenGL..." << endl;
 
   printf("Loaded %d spline(s).\n", numSplines);
-  for(int i=0; i<numSplines; i++)
+  for (int i = 0; i < numSplines; i++)
     printf("Num control points in spline %d: %d.\n", i, splines[i].numControlPoints);
 
 #ifdef __APPLE__
@@ -634,29 +635,33 @@ int main(int argc, char ** argv)
   glutMainLoop();
 }
 
-void get_vertices() {
-  vertices.clear(); vertex_colors.clear();
+void get_vertices()
+{
+  vertices.clear();
+  vertex_colors.clear();
 
   // 3 columns, 4 rows
-  glm::mat3x4 control, m; 
+  glm::mat3x4 control, m;
   glm::vec3 position, init_pos;
   Point p1, p2, p3, p4;
 
   float max_line_length = 0.1;
 
-  for (int s = 0; s < numSplines; ++s) {
+  for (int s = 0; s < numSplines; ++s)
+  {
 
     Spline spline = splines[s];
 
-    for (int i = 0; i < spline.numControlPoints - 3; ++i) {
+    for (int i = 0; i < spline.numControlPoints - 3; ++i)
+    {
       p1 = spline.points[i];
-      p2 = spline.points[i+1];
-      p3 = spline.points[i+2];
-      p4 = spline.points[i+3];
+      p2 = spline.points[i + 1];
+      p3 = spline.points[i + 2];
+      p4 = spline.points[i + 3];
 
       control = glm::mat3x4(
-          p1.x, p2.x, p3.x, p4.x, 
-          p1.y, p2.y, p3.y, p4.y, 
+          p1.x, p2.x, p3.x, p4.x,
+          p1.y, p2.y, p3.y, p4.y,
           p1.z, p2.z, p3.z, p4.z);
 
       m = basis * control;
@@ -666,17 +671,20 @@ void get_vertices() {
   }
 
   set_one_vbo_one_vao(vertices, vertex_colors, vao_vertices);
+
+  generate_cross_section_color(cross_section_vertices, cross_section_vertex_colors);
+  cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << " cross_section_vertex_colors: " << cross_section_vertex_colors.size() / 3 << '\n';
   set_one_vbo_one_vao(cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
 }
-
 
 /* Generate points for line mode */
 void fill_lines(GLuint &ebo)
 {
   vector<int> lines;
-  
+
   int index = 1;
-  for (; index < vertices.size() / 3; ++index) {
+  for (; index < vertices.size() / 3; ++index)
+  {
     lines.push_back(index - 1);
     lines.push_back(index);
   }
@@ -684,14 +692,19 @@ void fill_lines(GLuint &ebo)
   lines.push_back(index - 1);
   lines.push_back(0);
 
+  cout << "spline size: " << frenets.size() << '\n';
+  cout << "lines size: " << lines.size() << '\n';
+
   set_ebo(lines, ebo);
 }
 
-void fill_cross_section(GLuint &ebo) {
+void fill_cross_section(GLuint &ebo)
+{
   vector<int> cross_section;
 
   int i = 0, num_vertices = vertices.size() / 3;
-  for (; i < num_vertices; ++i) {
+  for (; i < num_vertices; ++i)
+  {
 
     int v0 = i * 4;
     int v1 = v0 + 1;
@@ -736,10 +749,12 @@ void fill_cross_section(GLuint &ebo) {
     cross_section.push_back(v4);
   }
 
+  cout << "cross_section size: " << cross_section.size() << '\n';
   set_ebo(cross_section, ebo);
 }
 
-struct Pos catmull_rom(float u, glm::mat3x4 &m) {
+struct Pos catmull_rom(float u, glm::mat3x4 &m)
+{
 
   glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
   glm::vec4 us_tan = glm::vec4(3 * powf(u, 2.0f), 2 * u, 1, 0);
@@ -751,8 +766,8 @@ struct Pos catmull_rom(float u, glm::mat3x4 &m) {
   return pos;
 }
 
-
-void set_ebo(vector<int> &indexes, GLuint &ebo) {
+void set_ebo(vector<int> &indexes, GLuint &ebo)
+{
 
   int size = sizeof(int) * indexes.size();
 
@@ -761,8 +776,6 @@ void set_ebo(vector<int> &indexes, GLuint &ebo) {
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indexes.data(), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-
 }
 
 /* set up a generic vbo and vao */
@@ -803,12 +816,11 @@ void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &
   glBindVertexArray(0);
 }
 
-
-void do_vertex(struct Pos &coords) {
+void do_vertex(struct Pos &coords)
+{
   generate_point(coords, vertices, vertex_colors, frenets);
   generate_cross_section(frenets, cross_section_vertices);
 }
-
 
 /* Universal vertices position and color generator */
 void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color, vector<struct Frenet> &f)
@@ -827,32 +839,33 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
   color.push_back(c);
   color.push_back(alpha);
 
-  // assign frenet 
+  // assign frenet
   Frenet frenet;
 
   frenet.point = p;
   frenet.tangent = t;
 
-  if (f.size() == 0) {
+  if (f.size() == 0)
+  {
     frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
     frenet.binormal = glm::normalize(glm::cross(frenet.tangent, frenet.normal));
-  } else {
+  }
+  else
+  {
     frenet.binormal = f.back().binormal;
     frenet.normal = f.back().normal;
     calculate_fernet(frenet);
   }
 
-
-
   f.push_back(frenet);
-
 }
 
-void generate_cross_section(vector<struct Frenet> &f, vector<float> &position) {
+void generate_cross_section(vector<struct Frenet> &f, vector<float> &position)
+{
 
-  float a = 0.5f;
+  float a = 0.02f;
 
-  Frenet &frenet = f.back();  
+  Frenet &frenet = f.back();
   glm::vec3 &p = frenet.point;
   glm::vec3 &n = frenet.normal;
   glm::vec3 &b = frenet.binormal;
@@ -862,42 +875,63 @@ void generate_cross_section(vector<struct Frenet> &f, vector<float> &position) {
   glm::vec3 v2 = p + a * (n + b * -1.0f);
   glm::vec3 v3 = p + a * (n * -1.0f + b * -1.0f);
 
+  // cout << "p: " << glm::to_string(p) << '\n';
+  // cout << "v0: " << glm::to_string(v0) << '\n';
+  // cout << "v1: " << glm::to_string(v1) << '\n';
+  // cout << "v2: " << glm::to_string(v2) << '\n';
+  // cout << "v3: " << glm::to_string(v3) << '\n';
+
+
   push_glm_to_vector(v0, position);
   push_glm_to_vector(v1, position);
   push_glm_to_vector(v2, position);
   push_glm_to_vector(v3, position);
 
+  // cout << "frenet size: " << f.size() << '\n';
+  // cout << "position size: " << position.size() / 3 << '\n';
+  // cout << '\n';
+
 }
 
-void push_glm_to_vector(glm::vec3 &g, vector<float> &vec) {
+void push_glm_to_vector(glm::vec3 &g, vector<float> &vec)
+{
   vec.push_back(g.x);
   vec.push_back(g.y);
   vec.push_back(g.z);
 }
 
-void generate_cross_section_color(vector<float> &position, vector<float> &color) {
+void generate_cross_section_color(vector<float> &position, vector<float> &color)
+{
 
   int i = 0, num_vertices = vertices.size() / 3;
-  for (; i < num_vertices; ++i) {
+  float c = 0.0f;
 
-    int v0 = i * 4;
-    int v1 = v0 + 1;
-    int v2 = v0 + 2;
-    int v3 = v0 + 3;
+  for (; i < num_vertices; ++i)
+  {
 
-    int v4 = ((i + 1) % num_vertices) * 4;
-    int v5 = v4 + 1;
-    int v6 = v4 + 2;
-    int v7 = v4 + 3;
+    for (int j = 0; j < 4; ++j)
+    {
+      color.push_back(1.0f);
+      color.push_back(c);
+      color.push_back(c);
+      color.push_back(alpha);
+    }
 
-    
+    // int index = i * 4;
+    // int v0 = index * 3;
+    // int v1 = v0 + 1;
+    // int v2 = v0 + 2;
+    // int v3 = v0 + 3;
 
+    // int v4 = ((index + 1) % num_vertices) * 4;
+    // int v5 = v4 + 1;
+    // int v6 = v4 + 2;
+    // int v7 = v4 + 3;
   }
-
 }
 
-
-glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3) {
+glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3)
+{
 
   glm::vec3 v1 = p2 - p1;
   glm::vec3 v2 = p3 - p2;
@@ -906,7 +940,6 @@ glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3) {
 
   return normal;
 }
-
 
 void set_matrix()
 {
@@ -925,24 +958,28 @@ void set_matrix()
   pipelineProgram->SetProjectionMatrix(p);
 }
 
-void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m) {
+void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m)
+{
 
   float umid = (u0 + u1) / 2;
   Pos x0 = catmull_rom(u0, m);
   Pos x1 = catmull_rom(u1, m);
 
-  if (glm::length(x1.position - x0.position) > max_line_length) {
+  if (glm::length(x1.position - x0.position) > max_line_length)
+  {
     subdivide(u0, umid, max_line_length, m);
     subdivide(umid, u1, max_line_length, m);
-  } else {
+  }
+  else
+  {
     do_vertex(x0);
   }
 }
 
-void calculate_fernet(Frenet &f) {
+void calculate_fernet(Frenet &f)
+{
   glm::vec3 n = glm::normalize(glm::cross(f.binormal, f.tangent));
   f.normal = n;
   glm::vec3 b = glm::normalize(glm::cross(f.tangent, f.normal));
   f.binormal = b;
 }
-
