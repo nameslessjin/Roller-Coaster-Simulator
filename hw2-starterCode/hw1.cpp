@@ -41,10 +41,15 @@ using namespace std;
 // forward declaration
 // fill positions and color array
 void get_vertices();
-void fill_lines();
+void fill_lines(GLuint &ebo);
 
-void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color);
+void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color, vector<struct Frenet> &f);
+void generate_cross_section(vector<struct Frenet> &f, vector<float> &position);
+void generate_cross_section_color(vector<float> &position, vector<float> &color);
 void do_vertex(struct Pos &coords);
+void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
+glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
+void fill_cross_section(GLuint &ebo);
 
 // set up vbo and vao
 void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &vao);
@@ -94,8 +99,7 @@ MODE_STATE mode = POINT;
 
 // animation mode
 int animation = 0;
-int counter = 0, start = 0;
-glm::vec3 v;
+int counter = 0;
 
 // state of the world
 float landRotate[3] = {0.0f, 0.0f, 0.0f};
@@ -116,12 +120,15 @@ char windowTitle[512] = "CSCI 420 homework II";
 // Input images
 
 // vertices
-vector<float> vertices, vertex_colors, vertex_tans;
+vector<float> vertices, vertex_colors;
 GLuint vao_vertices;
 
 // lines
-vector<int> lines;
 GLuint ebo_line;
+
+// rail cross section
+vector<float> cross_section_vertices, cross_section_vertex_colors;
+GLuint vao_cross_section_vertices, ebo_cross_section_vertices;
 
 OpenGLMatrix matrix;
 BasicPipelineProgram *pipelineProgram;
@@ -158,7 +165,7 @@ struct Frenet
   glm::vec3 normal;
 };
 
-Frenet frenet;
+vector<Frenet> frenets;
 
 // the spline array 
 Spline * splines;
@@ -336,16 +343,13 @@ void displayFunc()
   //               0.0, 0.0, 0.0, 
   //               0.0, 1.0, 0.0);
 
+  int index = counter % frenets.size();
+  Frenet frenet = frenets[index];
   glm::vec3 np = frenet.point + frenet.tangent;
 
   matrix.LookAt(frenet.point.x, frenet.point.y, frenet.point.z, 
                 np.x, np.y, np.z, 
                 frenet.normal.x, frenet.normal.y, frenet.normal.z);
-
-  cout << " \n";
-  cout << frenet.point.x << " " << frenet.point.y << " " << frenet.point.z << '\n';
-  cout << frenet.tangent.x << " " << frenet.tangent.y << " " << frenet.tangent.z << '\n';
-  cout << frenet.normal.x << " " << frenet.normal.y << " " << frenet.normal.z << '\n';
 
 
   // Transformation
@@ -370,7 +374,7 @@ void displayFunc()
     glUniform1i(loc, 0);
     glBindVertexArray(vao_vertices);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
-    glDrawElements(GL_LINES, lines.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     break;
   }
@@ -383,17 +387,6 @@ void idleFunc()
 
   if (animation == 1) {
     ++counter;
-    int index = (counter * 3) % vertices.size();
-    
-    glm::vec3 p = glm::vec3(vertices[index], vertices[index + 1], vertices[index + 2]);
-    glm::vec3 t = glm::vec3(vertex_tans[index], vertex_tans[index + 1], vertex_tans[index + 2]);
-
-    frenet.point = p;
-    frenet.tangent = t;
-
-    calculate_fernet(frenet);
-
-
   }
 
   // make the screen update
@@ -559,7 +552,8 @@ void initScene(int argc, char *argv[])
     abort();
 
   get_vertices();
-  fill_lines();
+  fill_lines(ebo_line);
+  fill_cross_section(ebo_cross_section_vertices);
 
   glEnable(GL_DEPTH_TEST);
 
@@ -671,24 +665,16 @@ void get_vertices() {
     }
   }
 
-  // initialize frenet
-  glm::vec3 p = glm::vec3(vertices[0], vertices[1], vertices[2]);
-  glm::vec3 t = glm::vec3(vertex_tans[0], vertex_tans[1], vertex_tans[2]);
-
-  frenet.point = p;
-  frenet.tangent = t;
-  frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
-  frenet.binormal = glm::normalize(glm::cross(frenet.tangent, frenet.normal));
-
   set_one_vbo_one_vao(vertices, vertex_colors, vao_vertices);
+  set_one_vbo_one_vao(cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
 }
 
 
 /* Generate points for line mode */
-void fill_lines()
+void fill_lines(GLuint &ebo)
 {
-  lines.clear();
-
+  vector<int> lines;
+  
   int index = 1;
   for (; index < vertices.size() / 3; ++index) {
     lines.push_back(index - 1);
@@ -698,7 +684,59 @@ void fill_lines()
   lines.push_back(index - 1);
   lines.push_back(0);
 
-  set_ebo(lines, ebo_line);
+  set_ebo(lines, ebo);
+}
+
+void fill_cross_section(GLuint &ebo) {
+  vector<int> cross_section;
+
+  int i = 0, num_vertices = vertices.size() / 3;
+  for (; i < num_vertices; ++i) {
+
+    int v0 = i * 4;
+    int v1 = v0 + 1;
+    int v2 = v0 + 2;
+    int v3 = v0 + 3;
+
+    int v4 = ((i + 1) % num_vertices) * 4;
+    int v5 = v4 + 1;
+    int v6 = v4 + 2;
+    int v7 = v4 + 3;
+
+    cross_section.push_back(v0);
+    cross_section.push_back(v4);
+    cross_section.push_back(v5);
+
+    cross_section.push_back(v0);
+    cross_section.push_back(v5);
+    cross_section.push_back(v1);
+
+    cross_section.push_back(v1);
+    cross_section.push_back(v5);
+    cross_section.push_back(v6);
+
+    cross_section.push_back(v1);
+    cross_section.push_back(v6);
+    cross_section.push_back(v2);
+
+    cross_section.push_back(v2);
+    cross_section.push_back(v6);
+    cross_section.push_back(v3);
+
+    cross_section.push_back(v3);
+    cross_section.push_back(v6);
+    cross_section.push_back(v7);
+
+    cross_section.push_back(v3);
+    cross_section.push_back(v7);
+    cross_section.push_back(v0);
+
+    cross_section.push_back(v0);
+    cross_section.push_back(v7);
+    cross_section.push_back(v4);
+  }
+
+  set_ebo(cross_section, ebo);
 }
 
 struct Pos catmull_rom(float u, glm::mat3x4 &m) {
@@ -767,12 +805,13 @@ void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &
 
 
 void do_vertex(struct Pos &coords) {
-  generate_point(coords, vertices, vertex_colors);
+  generate_point(coords, vertices, vertex_colors, frenets);
+  generate_cross_section(frenets, cross_section_vertices);
 }
 
 
 /* Universal vertices position and color generator */
-void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color)
+void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color, vector<struct Frenet> &f)
 {
 
   float c = 1.0f;
@@ -788,12 +827,84 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
   color.push_back(c);
   color.push_back(alpha);
 
-  // assign tangent 
-  
-  vertex_tans.push_back(t.x);
-  vertex_tans.push_back(t.y);
-  vertex_tans.push_back(t.z);
+  // assign frenet 
+  Frenet frenet;
 
+  frenet.point = p;
+  frenet.tangent = t;
+
+  if (f.size() == 0) {
+    frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
+    frenet.binormal = glm::normalize(glm::cross(frenet.tangent, frenet.normal));
+  } else {
+    frenet.binormal = f.back().binormal;
+    frenet.normal = f.back().normal;
+    calculate_fernet(frenet);
+  }
+
+
+
+  f.push_back(frenet);
+
+}
+
+void generate_cross_section(vector<struct Frenet> &f, vector<float> &position) {
+
+  float a = 0.5f;
+
+  Frenet &frenet = f.back();  
+  glm::vec3 &p = frenet.point;
+  glm::vec3 &n = frenet.normal;
+  glm::vec3 &b = frenet.binormal;
+
+  glm::vec3 v0 = p + a * (n * -1.0f + b);
+  glm::vec3 v1 = p + a * (n + b);
+  glm::vec3 v2 = p + a * (n + b * -1.0f);
+  glm::vec3 v3 = p + a * (n * -1.0f + b * -1.0f);
+
+  push_glm_to_vector(v0, position);
+  push_glm_to_vector(v1, position);
+  push_glm_to_vector(v2, position);
+  push_glm_to_vector(v3, position);
+
+}
+
+void push_glm_to_vector(glm::vec3 &g, vector<float> &vec) {
+  vec.push_back(g.x);
+  vec.push_back(g.y);
+  vec.push_back(g.z);
+}
+
+void generate_cross_section_color(vector<float> &position, vector<float> &color) {
+
+  int i = 0, num_vertices = vertices.size() / 3;
+  for (; i < num_vertices; ++i) {
+
+    int v0 = i * 4;
+    int v1 = v0 + 1;
+    int v2 = v0 + 2;
+    int v3 = v0 + 3;
+
+    int v4 = ((i + 1) % num_vertices) * 4;
+    int v5 = v4 + 1;
+    int v6 = v4 + 2;
+    int v7 = v4 + 3;
+
+    
+
+  }
+
+}
+
+
+glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3) {
+
+  glm::vec3 v1 = p2 - p1;
+  glm::vec3 v2 = p3 - p2;
+
+  glm::vec3 normal = glm::normalize(glm::cross(v1, v2));
+
+  return normal;
 }
 
 
