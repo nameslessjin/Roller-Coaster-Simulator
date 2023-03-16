@@ -337,7 +337,7 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  // matrix.LookAt(0.0, 10.0, 5.0,
+  // matrix.LookAt(5.0, 10.0, 15.0,
   //               0.0, 0.0, 0.0,
   //               0.0, 1.0, 0.0);
 
@@ -345,7 +345,7 @@ void displayFunc()
   Frenet frenet = frenets[index];
   glm::vec3 np = frenet.point + frenet.tangent;
 
-  matrix.LookAt(frenet.point.x, frenet.point.y + 1, frenet.point.z,
+  matrix.LookAt(frenet.point.x, frenet.point.y, frenet.point.z,
                 np.x, np.y, np.z,
                 frenet.normal.x, frenet.normal.y, frenet.normal.z);
 
@@ -829,7 +829,7 @@ void do_vertex(struct Pos &coords)
 void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color, vector<struct Frenet> &f)
 {
 
-  float c = 1.0f;
+  float c = 0.0f;
   glm::vec3 p = coords.position;
   glm::vec3 t = coords.position_tan;
 
@@ -850,7 +850,7 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
 
   if (f.size() == 0)
   {
-    frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
+    frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(1, 1, 1)));
     frenet.binormal = glm::normalize(glm::cross(frenet.tangent, frenet.normal));
   }
   else
@@ -860,6 +860,7 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
     calculate_fernet(frenet);
   }
 
+  cout << "binormal: " << glm::to_string(frenet.binormal) << "normal: " << glm::to_string(frenet.normal) << '\n';
   f.push_back(frenet);
 }
 
@@ -935,10 +936,10 @@ void generate_cross_section_color(vector<float> &position, vector<float> &color)
     glm::vec3 n2 = pseudo_normal(t4, t5);
     glm::vec3 n3 = pseudo_normal(t6, t7);
  
-    push_glm_to_color(n0, color);
-    push_glm_to_color(n1, color);
-    push_glm_to_color(n2, color);
-    push_glm_to_color(n3, color);
+    push_glm_to_color(t0, color);
+    push_glm_to_color(t2, color);
+    push_glm_to_color(t4, color);
+    push_glm_to_color(t6, color);
 
   }
 }
