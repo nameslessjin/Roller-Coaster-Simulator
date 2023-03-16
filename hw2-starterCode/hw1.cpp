@@ -49,6 +49,9 @@ void do_vertex(struct Pos &coords);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
 void fill_cross_section(GLuint &ebo);
+glm::vec3 find_point(vector<float> &position, int index);
+glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2);
+void push_glm_to_color(glm::vec3 &n, vector<float> &color);
 
 // set up vbo and vao
 void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &vao);
@@ -543,7 +546,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 void initScene(int argc, char *argv[])
 {
 
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
 
   // initialize program pipeline
   pipelineProgram = new BasicPipelineProgram;
@@ -875,21 +878,10 @@ void generate_cross_section(vector<struct Frenet> &f, vector<float> &position)
   glm::vec3 v2 = p + a * (n + b * -1.0f);
   glm::vec3 v3 = p + a * (n * -1.0f + b * -1.0f);
 
-  // cout << "p: " << glm::to_string(p) << '\n';
-  // cout << "v0: " << glm::to_string(v0) << '\n';
-  // cout << "v1: " << glm::to_string(v1) << '\n';
-  // cout << "v2: " << glm::to_string(v2) << '\n';
-  // cout << "v3: " << glm::to_string(v3) << '\n';
-
-
   push_glm_to_vector(v0, position);
   push_glm_to_vector(v1, position);
   push_glm_to_vector(v2, position);
   push_glm_to_vector(v3, position);
-
-  // cout << "frenet size: " << f.size() << '\n';
-  // cout << "position size: " << position.size() / 3 << '\n';
-  // cout << '\n';
 
 }
 
@@ -908,26 +900,63 @@ void generate_cross_section_color(vector<float> &position, vector<float> &color)
 
   for (; i < num_vertices; ++i)
   {
+    int index = i * 4;
+    int i0 = index * 3;
+    int i1 = i0 + 3;
+    int i2 = i1 + 3;
+    int i3 = i2 + 3;
 
-    for (int j = 0; j < 4; ++j)
-    {
-      color.push_back(1.0f);
-      color.push_back(c);
-      color.push_back(c);
-      color.push_back(alpha);
-    }
+    index = ((i + 1) % num_vertices) * 4;
+    int i4 = index * 3;
+    int i5 = i4 + 3;
+    int i6 = i5 + 3;
+    int i7 = i6 + 3;
 
-    // int index = i * 4;
-    // int v0 = index * 3;
-    // int v1 = v0 + 1;
-    // int v2 = v0 + 2;
-    // int v3 = v0 + 3;
+    glm::vec3 p0 = find_point(position, i0);
+    glm::vec3 p1 = find_point(position, i1);
+    glm::vec3 p2 = find_point(position, i2);
+    glm::vec3 p3 = find_point(position, i3);
+    glm::vec3 p4 = find_point(position, i4);
+    glm::vec3 p5 = find_point(position, i5);
+    glm::vec3 p6 = find_point(position, i6);
+    glm::vec3 p7 = find_point(position, i7);
 
-    // int v4 = ((index + 1) % num_vertices) * 4;
-    // int v5 = v4 + 1;
-    // int v6 = v4 + 2;
-    // int v7 = v4 + 3;
+    glm::vec3 t0 = find_triangle_normal(p0, p4, p5);
+    glm::vec3 t1 = find_triangle_normal(p0, p7, p4);
+    glm::vec3 t2 = find_triangle_normal(p1, p0, p5);
+    glm::vec3 t3 = find_triangle_normal(p1, p5, p6);
+    glm::vec3 t4 = find_triangle_normal(p2, p1, p6);
+    glm::vec3 t5 = find_triangle_normal(p2, p6, p3);
+    glm::vec3 t6 = find_triangle_normal(p3, p6, p7);
+    glm::vec3 t7 = find_triangle_normal(p3, p7, p0);
+
+    glm::vec3 n0 = pseudo_normal(t0, t1);
+    glm::vec3 n1 = pseudo_normal(t2, t3);
+    glm::vec3 n2 = pseudo_normal(t4, t5);
+    glm::vec3 n3 = pseudo_normal(t6, t7);
+ 
+    push_glm_to_color(n0, color);
+    push_glm_to_color(n1, color);
+    push_glm_to_color(n2, color);
+    push_glm_to_color(n3, color);
+
   }
+}
+
+void push_glm_to_color(glm::vec3 &n, vector<float> &color)
+{
+  color.push_back(n.x);
+  color.push_back(n.y);
+  color.push_back(n.z);
+  color.push_back(alpha);
+}
+
+glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2) {
+  return glm::normalize(glm::cross(n1, n2));
+}
+
+glm::vec3 find_point(vector<float> &position, int index) {
+  return glm::vec3(position[index], position[index + 1], position[index + 2]);
 }
 
 glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3)
