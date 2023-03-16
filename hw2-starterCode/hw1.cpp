@@ -38,6 +38,8 @@ char textureShaderBasePath[1024] = "../textureShader";
 
 using namespace std;
 
+const char image_file[1024] = "Waterpl.jpg";
+
 // forward declaration
 // fill positions and color array
 void get_vertices();
@@ -56,7 +58,8 @@ void push_glm_to_color(glm::vec3 &n, vector<float> &color);
 void fill_ground();
 
 // set up vbo and vao
-void set_one_vbo_one_vao(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
+void set_one_vbo_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
+void set_one_vbo_one_vao_texture(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, vector<float> &texCoord, GLuint &vao);
 void set_ebo(vector<int> &indexes, GLuint &ebo);
 
 // background image
@@ -134,7 +137,7 @@ vector<float> cross_section_vertices, cross_section_vertex_colors;
 GLuint vao_cross_section_vertices, ebo_cross_section_vertices;
 
 // groud
-GLuint vao_ground, ebo_ground;
+GLuint vao_ground, ebo_ground, texture_ground;
 
 OpenGLMatrix matrix;
 BasicPipelineProgram *pipelineProgram;
@@ -385,6 +388,7 @@ void displayFunc()
   // draw ground
   texturePipelineProgram->Bind();
   set_matrix(texturePipelineProgram);
+  glBindTexture(GL_TEXTURE_2D, texture_ground);
   glBindVertexArray(vao_ground);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_ground);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -649,6 +653,8 @@ int main(int argc, char **argv)
 
   // do initialization
   initScene(argc, argv);
+  glGenTextures(1, &texture_ground);
+  initTexture(image_file, texture_ground);
 
   // sink forever into the glut loop
   glutMainLoop();
@@ -689,11 +695,11 @@ void get_vertices()
     }
   }
 
-  set_one_vbo_one_vao(pipelineProgram, vertices, vertex_colors, vao_vertices);
+  set_one_vbo_one_vao_basic(pipelineProgram, vertices, vertex_colors, vao_vertices);
 
   generate_cross_section_color(cross_section_vertices, cross_section_vertex_colors);
   cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << " cross_section_vertex_colors: " << cross_section_vertex_colors.size() / 3 << '\n';
-  set_one_vbo_one_vao(pipelineProgram, cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
+  set_one_vbo_one_vao_basic(pipelineProgram, cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
 }
 
 /* Generate points for line mode */
@@ -774,7 +780,7 @@ void fill_cross_section(GLuint &ebo)
 
 void fill_ground() {
 
-  vector<float> grounds, colors;
+  vector<float> grounds, colors, texCoord;
   vector<int> indexes;
   float c = 0.0f;
 
@@ -788,6 +794,9 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
+  texCoord.push_back(1.0f);
+  texCoord.push_back(1.0f);
+
   // 1 | -1, 1
   grounds.push_back(-1000.0f);
   grounds.push_back(-10.0f);
@@ -797,6 +806,9 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(c);
   colors.push_back(alpha);
+
+  texCoord.push_back(-1.0f);
+  texCoord.push_back(1.0f);
 
   // 2 | 1, 1
   grounds.push_back(1000.0f);
@@ -808,6 +820,9 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
+  texCoord.push_back(1.0f);
+  texCoord.push_back(-1.0f);
+
   // 3 | -1, -1
   grounds.push_back(-1000.0f);
   grounds.push_back(-10.0f);
@@ -818,7 +833,10 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
-  set_one_vbo_one_vao(texturePipelineProgram, grounds, colors, vao_ground);
+  texCoord.push_back(-1.0f);
+  texCoord.push_back(-1.0f);
+
+  set_one_vbo_one_vao_texture(texturePipelineProgram, grounds, colors, texCoord, vao_ground);
 
   indexes.push_back(0);
   indexes.push_back(1);
@@ -858,7 +876,7 @@ void set_ebo(vector<int> &indexes, GLuint &ebo)
 }
 
 /* set up a generic vbo and vao */
-void set_one_vbo_one_vao(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao)
+void set_one_vbo_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao)
 {
   // Set up vertices and color in buffer
   int size = sizeof(float) * position.size();
@@ -889,6 +907,51 @@ void set_one_vbo_one_vao(BasicPipelineProgram *pipeline, vector<float> &position
   loc = glGetAttribLocation(pipeline->GetProgramHandle(), "color");
   glEnableVertexAttribArray(loc);
   glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
+
+  // unbind vbo and vao
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+}
+
+void set_one_vbo_one_vao_texture(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, vector<float> &texCoord, GLuint &vao)
+{
+  // Set up vertices and color in buffer
+  int size = sizeof(float) * position.size();
+  int color_size = sizeof(float) * color.size();
+  int tex_size = sizeof(float) * texCoord.size();
+
+  uintptr_t offset = 0;
+
+  // bind vertices and colors with vbo
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, size + color_size + tex_size, NULL, GL_STATIC_DRAW);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, size, position.data());
+  glBufferSubData(GL_ARRAY_BUFFER, size, color_size, color.data());
+  glBufferSubData(GL_ARRAY_BUFFER, size + color_size, tex_size, texCoord.data());
+
+  // set up vao
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+
+  // get the location of the shader variable "position"
+  // enable it then set attributes
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  GLuint loc = glGetAttribLocation(pipeline->GetProgramHandle(), "position");
+  glEnableVertexAttribArray(loc);
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
+
+  // get the location of the shader variable "color"
+  offset += size;
+  loc = glGetAttribLocation(pipeline->GetProgramHandle(), "color");
+  glEnableVertexAttribArray(loc);
+  glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
+
+  offset += color_size;
+  loc = glGetAttribLocation(pipeline->GetProgramHandle(), "texCoord");
+  glEnableVertexAttribArray(loc);
+  glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
 
   // unbind vbo and vao
   glBindBuffer(GL_ARRAY_BUFFER, 0);
