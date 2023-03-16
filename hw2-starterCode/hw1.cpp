@@ -33,6 +33,7 @@
 char shaderBasePath[1024] = SHADER_BASE_PATH;
 #else
 char shaderBasePath[1024] = "../openGLHelper-starterCode";
+char textureShaderBasePath[1024] = "../textureShader";
 #endif
 
 using namespace std;
@@ -52,6 +53,7 @@ void fill_cross_section(GLuint &ebo);
 glm::vec3 find_point(vector<float> &position, int index);
 glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2);
 void push_glm_to_color(glm::vec3 &n, vector<float> &color);
+void fill_ground();
 
 // set up vbo and vao
 void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &vao);
@@ -131,8 +133,12 @@ GLuint ebo_line;
 vector<float> cross_section_vertices, cross_section_vertex_colors;
 GLuint vao_cross_section_vertices, ebo_cross_section_vertices;
 
+// groud
+GLuint vao_ground, ebo_ground;
+
 OpenGLMatrix matrix;
 BasicPipelineProgram *pipelineProgram;
+BasicPipelineProgram *texturePipelineProgram;
 
 // HW2
 // represents one control point along the spline
@@ -337,17 +343,19 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  // matrix.LookAt(5.0, 10.0, 15.0,
-  //               0.0, 0.0, 0.0,
-  //               0.0, 1.0, 0.0);
+  matrix.LookAt(5.0, 10.0, 15.0,
+                0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
   glm::vec3 np = frenet.point + frenet.tangent;
 
-  matrix.LookAt(frenet.point.x, frenet.point.y, frenet.point.z,
-                np.x, np.y, np.z,
-                frenet.normal.x, frenet.normal.y, frenet.normal.z);
+  float offset = 0;
+
+  // matrix.LookAt(frenet.point.x, frenet.point.y, frenet.point.z + offset,
+  //               np.x, np.y, np.z + offset,
+  //               frenet.normal.x, frenet.normal.y, frenet.normal.z);
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -377,6 +385,10 @@ void displayFunc()
     glBindVertexArray(vao_cross_section_vertices);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_vertices);
     glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3, GL_UNSIGNED_INT, 0);
+
+    glBindVertexArray(vao_ground);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_ground);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     glBindVertexArray(0);
     break;
@@ -555,9 +567,16 @@ void initScene(int argc, char *argv[])
   if (ret != 0)
     abort();
 
+  texturePipelineProgram = new BasicPipelineProgram;
+  ret = texturePipelineProgram->Init(textureShaderBasePath);
+  texturePipelineProgram->Bind();
+  if (ret != 0)
+    abort();
+
   get_vertices();
   fill_lines(ebo_line);
   fill_cross_section(ebo_cross_section_vertices);
+  fill_ground();
 
   glEnable(GL_DEPTH_TEST);
 
@@ -756,6 +775,66 @@ void fill_cross_section(GLuint &ebo)
   set_ebo(cross_section, ebo);
 }
 
+void fill_ground() {
+
+  vector<float> grounds, colors;
+  vector<int> indexes;
+  float c = 0.0f;
+
+  // 0 | 1, 1
+  grounds.push_back(1000.0f);
+  grounds.push_back(-10.0f);
+  grounds.push_back(1000.0f);
+
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(alpha);
+
+  // 1 | -1, 1
+  grounds.push_back(-1000.0f);
+  grounds.push_back(-10.0f);
+  grounds.push_back(1000.0f);
+
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(alpha);
+
+  // 2 | 1, 1
+  grounds.push_back(1000.0f);
+  grounds.push_back(-10.0f);
+  grounds.push_back(-1000.0f);
+
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(alpha);
+
+  // 3 | -1, -1
+  grounds.push_back(-1000.0f);
+  grounds.push_back(-10.0f);
+  grounds.push_back(-1000.0f);
+
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(c);
+  colors.push_back(alpha);
+
+  set_one_vbo_one_vao(grounds, colors, vao_ground);
+
+  indexes.push_back(0);
+  indexes.push_back(1);
+  indexes.push_back(2);
+
+  indexes.push_back(1);
+  indexes.push_back(3);
+  indexes.push_back(2);
+
+  set_ebo(indexes, ebo_ground);
+
+}
+
 struct Pos catmull_rom(float u, glm::mat3x4 &m)
 {
 
@@ -851,6 +930,11 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
   if (f.size() == 0)
   {
     frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(1, 1, 1)));
+
+    if (glm::isnan(frenet.normal.x)) {
+      frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
+    }
+
     frenet.binormal = glm::normalize(glm::cross(frenet.tangent, frenet.normal));
   }
   else
@@ -860,7 +944,8 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
     calculate_fernet(frenet);
   }
 
-  cout << "binormal: " << glm::to_string(frenet.binormal) << "normal: " << glm::to_string(frenet.normal) << '\n';
+  // cout << "binormal: " << glm::to_string(frenet.binormal) << " normal: " << glm::to_string(frenet.normal) << '\n';
+
   f.push_back(frenet);
 }
 
@@ -1013,3 +1098,4 @@ void calculate_fernet(Frenet &f)
   glm::vec3 b = glm::normalize(glm::cross(f.tangent, f.normal));
   f.binormal = b;
 }
+
