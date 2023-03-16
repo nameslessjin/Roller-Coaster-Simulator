@@ -56,11 +56,11 @@ void push_glm_to_color(glm::vec3 &n, vector<float> &color);
 void fill_ground();
 
 // set up vbo and vao
-void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &vao);
+void set_one_vbo_one_vao(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
 void set_ebo(vector<int> &indexes, GLuint &ebo);
 
 // background image
-void set_matrix();
+void set_matrix(BasicPipelineProgram *pipeline);
 
 // hw2
 struct Pos catmull_rom(float u, glm::mat3x4 &m);
@@ -367,32 +367,29 @@ void displayFunc()
   // bind shader
   pipelineProgram->Bind();
 
-  set_matrix();
+  set_matrix(pipelineProgram);
 
   // get loc for mode in vertex shader
   GLuint loc = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 
-  // drawing mode
-  switch (mode)
-  {
-  default:
-    glUniform1i(loc, 0);
+  glUniform1i(loc, 0);
 
-    glBindVertexArray(vao_vertices);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
-    glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
+  glBindVertexArray(vao_vertices);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
+  glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
 
-    glBindVertexArray(vao_cross_section_vertices);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_vertices);
-    glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3, GL_UNSIGNED_INT, 0);
+  glBindVertexArray(vao_cross_section_vertices);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_vertices);
+  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3, GL_UNSIGNED_INT, 0);
 
-    glBindVertexArray(vao_ground);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_ground);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  // draw ground
+  texturePipelineProgram->Bind();
+  set_matrix(texturePipelineProgram);
+  glBindVertexArray(vao_ground);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_ground);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    glBindVertexArray(0);
-    break;
-  }
+  glBindVertexArray(0);
 
   glutSwapBuffers();
 }
@@ -692,11 +689,11 @@ void get_vertices()
     }
   }
 
-  set_one_vbo_one_vao(vertices, vertex_colors, vao_vertices);
+  set_one_vbo_one_vao(pipelineProgram, vertices, vertex_colors, vao_vertices);
 
   generate_cross_section_color(cross_section_vertices, cross_section_vertex_colors);
   cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << " cross_section_vertex_colors: " << cross_section_vertex_colors.size() / 3 << '\n';
-  set_one_vbo_one_vao(cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
+  set_one_vbo_one_vao(pipelineProgram, cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
 }
 
 /* Generate points for line mode */
@@ -821,7 +818,7 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
-  set_one_vbo_one_vao(grounds, colors, vao_ground);
+  set_one_vbo_one_vao(texturePipelineProgram, grounds, colors, vao_ground);
 
   indexes.push_back(0);
   indexes.push_back(1);
@@ -861,7 +858,7 @@ void set_ebo(vector<int> &indexes, GLuint &ebo)
 }
 
 /* set up a generic vbo and vao */
-void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &vao)
+void set_one_vbo_one_vao(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao)
 {
   // Set up vertices and color in buffer
   int size = sizeof(float) * position.size();
@@ -883,13 +880,13 @@ void set_one_vbo_one_vao(vector<float> &position, vector<float> &color, GLuint &
   // get the location of the shader variable "position"
   // enable it then set attributes
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  GLuint loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position");
+  GLuint loc = glGetAttribLocation(pipeline->GetProgramHandle(), "position");
   glEnableVertexAttribArray(loc);
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
 
   // get the location of the shader variable "color"
   offset += size;
-  loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color");
+  loc = glGetAttribLocation(pipeline->GetProgramHandle(), "color");
   glEnableVertexAttribArray(loc);
   glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
 
@@ -1056,7 +1053,7 @@ glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3)
   return normal;
 }
 
-void set_matrix()
+void set_matrix(BasicPipelineProgram *pipeline)
 {
   float m[16], p[16];
 
@@ -1069,8 +1066,8 @@ void set_matrix()
   matrix.GetMatrix(p);
 
   // set variable
-  pipelineProgram->SetModelViewMatrix(m);
-  pipelineProgram->SetProjectionMatrix(p);
+  pipeline->SetModelViewMatrix(m);
+  pipeline->SetProjectionMatrix(p);
 }
 
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m)
