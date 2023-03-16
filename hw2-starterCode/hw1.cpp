@@ -346,19 +346,22 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  matrix.LookAt(5.0, 10.0, 15.0,
-                0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0);
+  // matrix.LookAt(5.0, 10.0, 15.0,
+  //               0.0, 0.0, 0.0,
+  //               0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
-  glm::vec3 np = frenet.point + frenet.tangent;
 
-  float offset = 0;
+  glm::vec3 eyes = frenet.point + frenet.binormal * 0.5f;
+  glm::vec3 focus = eyes + frenet.tangent;
+  glm::vec3 up = frenet.binormal;
 
-  // matrix.LookAt(frenet.point.x, frenet.point.y, frenet.point.z + offset,
-  //               np.x, np.y, np.z + offset,
-  //               frenet.normal.x, frenet.normal.y, frenet.normal.z);
+  float offset = 0.0;
+
+  matrix.LookAt(eyes.x, eyes.y, eyes.z + offset,
+                focus.x, focus.y, focus.z + offset,
+                up.x, up.y, up.z);
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -784,10 +787,13 @@ void fill_ground() {
   vector<int> indexes;
   float c = 0.0f;
 
+  float l = 1000.0f;
+  float h = -10.0f;
+
   // 0 | 1, 1
-  grounds.push_back(1000.0f);
-  grounds.push_back(-10.0f);
-  grounds.push_back(1000.0f);
+  grounds.push_back(l);
+  grounds.push_back(l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -798,9 +804,9 @@ void fill_ground() {
   texCoord.push_back(1.0f);
 
   // 1 | -1, 1
-  grounds.push_back(-1000.0f);
-  grounds.push_back(-10.0f);
-  grounds.push_back(1000.0f);
+  grounds.push_back(-l);
+  grounds.push_back(l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -811,9 +817,9 @@ void fill_ground() {
   texCoord.push_back(1.0f);
 
   // 2 | 1, 1
-  grounds.push_back(1000.0f);
-  grounds.push_back(-10.0f);
-  grounds.push_back(-1000.0f);
+  grounds.push_back(l);
+  grounds.push_back(-l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -824,9 +830,9 @@ void fill_ground() {
   texCoord.push_back(-1.0f);
 
   // 3 | -1, -1
-  grounds.push_back(-1000.0f);
-  grounds.push_back(-10.0f);
-  grounds.push_back(-1000.0f);
+  grounds.push_back(-l);
+  grounds.push_back(-l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -968,7 +974,7 @@ void do_vertex(struct Pos &coords)
 void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color, vector<struct Frenet> &f)
 {
 
-  float c = 0.0f;
+  float c = 1.0f;
   glm::vec3 p = coords.position;
   glm::vec3 t = coords.position_tan;
 
@@ -1012,7 +1018,7 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
 void generate_cross_section(vector<struct Frenet> &f, vector<float> &position)
 {
 
-  float a = 0.02f;
+  float a = 0.1f;
 
   Frenet &frenet = f.back();
   glm::vec3 &p = frenet.point;
