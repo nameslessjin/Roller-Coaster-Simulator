@@ -136,8 +136,7 @@ GLuint vao_vertices;
 GLuint ebo_line;
 
 // rail cross section
-vector<float> cross_section_vertices, cross_section_vertex_colors;
-GLuint vao_cross_section_vertices, ebo_cross_section_vertices;
+vector<float> cross_section_vertices;
 
 vector<float> cross_section_left, cross_section_left_color;
 GLuint vao_cross_section_left, ebo_cross_section_left;
@@ -148,6 +147,7 @@ GLuint vao_cross_section_up, ebo_cross_section_up;
 vector<float> cross_section_down, cross_section_down_color;
 GLuint vao_cross_section_down, ebo_cross_section_down;
 
+int cross_section_side_size = 0;
 
 
 // groud
@@ -360,20 +360,20 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  // matrix.LookAt(5.0, 10.0, 15.0,
-  //               0.0, 0.0, 0.0,
-  //               0.0, 1.0, 0.0);
+  matrix.LookAt(5.0, 10.0, 15.0,
+                0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
 
-  glm::vec3 eyes = frenet.point + frenet.normal * 0.5f;
+  glm::vec3 eyes = frenet.point - frenet.binormal * 0.5f;
   glm::vec3 focus = eyes + frenet.tangent;
-  glm::vec3 up = frenet.normal;
+  glm::vec3 up = -frenet.binormal;
 
-  matrix.LookAt(eyes.x, eyes.y, eyes.z,
-                focus.x, focus.y, focus.z,
-                up.x, up.y, up.z);
+  // matrix.LookAt(eyes.x, eyes.y, eyes.z,
+  //               focus.x, focus.y, focus.z,
+  //               up.x, up.y, up.z);
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -398,19 +398,19 @@ void displayFunc()
 
   glBindVertexArray(vao_cross_section_right);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_right);
-  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, cross_section_side_size, GL_UNSIGNED_INT, 0);
 
   glBindVertexArray(vao_cross_section_up);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_up);
-  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, cross_section_side_size, GL_UNSIGNED_INT, 0);
 
   glBindVertexArray(vao_cross_section_left);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_left);
-  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, cross_section_side_size, GL_UNSIGNED_INT, 0);
 
   glBindVertexArray(vao_cross_section_down);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_down);
-  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, cross_section_side_size, GL_UNSIGNED_INT, 0);
 
   // draw ground
   texturePipelineProgram->Bind();
@@ -430,7 +430,7 @@ void idleFunc()
 
   if (animation == 1)
   {
-    ++counter;
+    counter += 100;
   }
 
   // make the screen update
@@ -603,7 +603,6 @@ void initScene(int argc, char *argv[])
 
   get_vertices();
   fill_lines(ebo_line);
-  fill_cross_section(ebo_cross_section_vertices);
   fill_ground();
 
   glEnable(GL_DEPTH_TEST);
@@ -697,7 +696,7 @@ void get_vertices()
   glm::vec3 position, init_pos;
   Point p1, p2, p3, p4;
 
-  float max_line_length = 0.1;
+  float max_line_length = 0.001;
 
   for (int s = 0; s < numSplines; ++s)
   {
@@ -726,8 +725,7 @@ void get_vertices()
 
   generate_cross_section(cross_section_vertices);
 
-  cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << " cross_section_vertex_colors: " << cross_section_vertex_colors.size() / 3 << '\n';
-  set_one_vbo_one_vao_basic(pipelineProgram, cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
+  cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << '\n';
 }
 
 /* Generate points for line mode */
@@ -742,8 +740,8 @@ void fill_lines(GLuint &ebo)
     lines.push_back(index);
   }
 
-  lines.push_back(index - 1);
-  lines.push_back(0);
+  // lines.push_back(index - 1);
+  // lines.push_back(0);
 
   cout << "spline size: " << frenets.size() << '\n';
   cout << "lines size: " << lines.size() << '\n';
@@ -751,60 +749,6 @@ void fill_lines(GLuint &ebo)
   set_ebo(lines, ebo);
 }
 
-void fill_cross_section(GLuint &ebo)
-{
-  vector<int> cross_section;
-
-  int i = 0, num_vertices = vertices.size() / 3;
-  for (; i < num_vertices; ++i)
-  {
-
-    int v0 = i * 4;
-    int v1 = v0 + 1;
-    int v2 = v0 + 2;
-    int v3 = v0 + 3;
-
-    int v4 = ((i + 1) % num_vertices) * 4;
-    int v5 = v4 + 1;
-    int v6 = v4 + 2;
-    int v7 = v4 + 3;
-
-    cross_section.push_back(v0);
-    cross_section.push_back(v4);
-    cross_section.push_back(v5);
-
-    cross_section.push_back(v0);
-    cross_section.push_back(v5);
-    cross_section.push_back(v1);
-
-    cross_section.push_back(v1);
-    cross_section.push_back(v5);
-    cross_section.push_back(v6);
-
-    cross_section.push_back(v1);
-    cross_section.push_back(v6);
-    cross_section.push_back(v2);
-
-    cross_section.push_back(v2);
-    cross_section.push_back(v6);
-    cross_section.push_back(v3);
-
-    cross_section.push_back(v3);
-    cross_section.push_back(v6);
-    cross_section.push_back(v7);
-
-    cross_section.push_back(v3);
-    cross_section.push_back(v7);
-    cross_section.push_back(v0);
-
-    cross_section.push_back(v0);
-    cross_section.push_back(v7);
-    cross_section.push_back(v4);
-  }
-
-  cout << "cross_section size: " << cross_section.size() << '\n';
-  set_ebo(cross_section, ebo);
-}
 
 void fill_ground() {
 
@@ -817,8 +761,8 @@ void fill_ground() {
 
   // 0 | 1, 1
   grounds.push_back(l);
-  grounds.push_back(l);
   grounds.push_back(h);
+  grounds.push_back(l);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -830,8 +774,8 @@ void fill_ground() {
 
   // 1 | -1, 1
   grounds.push_back(-l);
-  grounds.push_back(l);
   grounds.push_back(h);
+  grounds.push_back(l);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -843,8 +787,8 @@ void fill_ground() {
 
   // 2 | 1, 1
   grounds.push_back(l);
-  grounds.push_back(-l);
   grounds.push_back(h);
+  grounds.push_back(-l);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -856,8 +800,8 @@ void fill_ground() {
 
   // 3 | -1, -1
   grounds.push_back(-l);
-  grounds.push_back(-l);
   grounds.push_back(h);
+  grounds.push_back(-l);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -1020,10 +964,10 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
 
   if (f.size() == 0)
   {
-    frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(1, 1, 1)));
+    frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
 
     if (glm::isnan(frenet.normal.x)) {
-      frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(0, 1, 0)));
+      frenet.normal = glm::normalize(glm::cross(frenet.tangent, glm::vec3(1, 1, 1)));
     }
 
     frenet.binormal = glm::normalize(glm::cross(frenet.tangent, frenet.normal));
@@ -1087,6 +1031,9 @@ void generate_cross_section(vector<float> vecs)
 
   for (; i < num_vertices; ++i)
   {
+
+    if (i == num_vertices - 1) continue;
+
     int index = i * 4;
     int i0 = index * 3;
     int i1 = i0 + 3;
@@ -1150,6 +1097,7 @@ void push_cross_section_index(vector<int> &indexes, int i) {
     indexes.push_back(i);
     indexes.push_back(i + 3);
     indexes.push_back(i + 1);
+    cross_section_side_size += 6;
 }
 
 void push_glm_to_color(glm::vec3 &n, vector<float> &color)
@@ -1167,7 +1115,6 @@ void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, 
   push_glm_to_color(c, color);
   push_glm_to_color(d, color);
 }
-
 
 glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2) {
   return glm::normalize(glm::cross(n1, n2));
