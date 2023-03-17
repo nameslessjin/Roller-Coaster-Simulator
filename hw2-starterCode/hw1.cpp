@@ -46,8 +46,8 @@ void get_vertices();
 void fill_lines(GLuint &ebo);
 
 void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color, vector<struct Frenet> &f);
-void generate_cross_section(vector<struct Frenet> &f, vector<float> &position);
-void generate_cross_section_color(vector<float> &position, vector<float> &color);
+void generate_cross_section_vector(vector<struct Frenet> &f, vector<float> &position);
+void generate_cross_section(vector<float> vecs);
 void do_vertex(struct Pos &coords);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
@@ -56,6 +56,9 @@ glm::vec3 find_point(vector<float> &position, int index);
 glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2);
 void push_glm_to_color(glm::vec3 &n, vector<float> &color);
 void fill_ground();
+void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &vec);
+void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &color);
+void push_cross_section_index(vector<int> &indexes, int i);
 
 // set up vbo and vao
 void set_one_vbo_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
@@ -135,6 +138,17 @@ GLuint ebo_line;
 // rail cross section
 vector<float> cross_section_vertices, cross_section_vertex_colors;
 GLuint vao_cross_section_vertices, ebo_cross_section_vertices;
+
+vector<float> cross_section_left, cross_section_left_color;
+GLuint vao_cross_section_left, ebo_cross_section_left;
+vector<float> cross_section_right, cross_section_right_color;
+GLuint vao_cross_section_right, ebo_cross_section_right;
+vector<float> cross_section_up, cross_section_up_color;
+GLuint vao_cross_section_up, ebo_cross_section_up;
+vector<float> cross_section_down, cross_section_down_color;
+GLuint vao_cross_section_down, ebo_cross_section_down;
+
+
 
 // groud
 GLuint vao_ground, ebo_ground, texture_ground;
@@ -346,22 +360,22 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  // matrix.LookAt(5.0, 10.0, 15.0,
-  //               0.0, 0.0, 0.0,
-  //               0.0, 1.0, 0.0);
+  matrix.LookAt(5.0, 10.0, 15.0,
+                0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
 
-  glm::vec3 eyes = frenet.point + frenet.binormal * 0.5f;
+  glm::vec3 eyes = frenet.point + frenet.normal * 0.5f;
   glm::vec3 focus = eyes + frenet.tangent;
-  glm::vec3 up = frenet.binormal;
+  glm::vec3 up = frenet.normal;
 
   float offset = 0.0;
 
-  matrix.LookAt(eyes.x, eyes.y, eyes.z + offset,
-                focus.x, focus.y, focus.z + offset,
-                up.x, up.y, up.z);
+  // matrix.LookAt(eyes.x, eyes.y, eyes.z + offset,
+  //               focus.x, focus.y, focus.z + offset,
+  //               up.x, up.y, up.z);
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -384,9 +398,21 @@ void displayFunc()
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
   glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
 
-  glBindVertexArray(vao_cross_section_vertices);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_vertices);
-  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3, GL_UNSIGNED_INT, 0);
+  glBindVertexArray(vao_cross_section_right);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_right);
+  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(vao_cross_section_up);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_up);
+  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(vao_cross_section_left);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_left);
+  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(vao_cross_section_down);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_down);
+  glDrawElements(GL_TRIANGLES, cross_section_vertices.size() * 3 / 4, GL_UNSIGNED_INT, 0);
 
   // draw ground
   texturePipelineProgram->Bind();
@@ -700,7 +726,8 @@ void get_vertices()
 
   set_one_vbo_one_vao_basic(pipelineProgram, vertices, vertex_colors, vao_vertices);
 
-  generate_cross_section_color(cross_section_vertices, cross_section_vertex_colors);
+  generate_cross_section(cross_section_vertices);
+
   cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << " cross_section_vertex_colors: " << cross_section_vertex_colors.size() / 3 << '\n';
   set_one_vbo_one_vao_basic(pipelineProgram, cross_section_vertices, cross_section_vertex_colors, vao_cross_section_vertices);
 }
@@ -967,7 +994,7 @@ void set_one_vbo_one_vao_texture(BasicPipelineProgram *pipeline, vector<float> &
 void do_vertex(struct Pos &coords)
 {
   generate_point(coords, vertices, vertex_colors, frenets);
-  generate_cross_section(frenets, cross_section_vertices);
+  generate_cross_section_vector(frenets, cross_section_vertices);
 }
 
 /* Universal vertices position and color generator */
@@ -1015,7 +1042,7 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
   f.push_back(frenet);
 }
 
-void generate_cross_section(vector<struct Frenet> &f, vector<float> &position)
+void generate_cross_section_vector(vector<struct Frenet> &f, vector<float> &position)
 {
 
   float a = 0.1f;
@@ -1035,6 +1062,8 @@ void generate_cross_section(vector<struct Frenet> &f, vector<float> &position)
   push_glm_to_vector(v2, position);
   push_glm_to_vector(v3, position);
 
+  // cout << "v0: " << glm::to_string(v0) << " v1: " << glm::to_string(v1) << "v2: " << glm::to_string(v2) << " v3: " << glm::to_string(v3) << '\n';
+
 }
 
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec)
@@ -1044,9 +1073,17 @@ void push_glm_to_vector(glm::vec3 &g, vector<float> &vec)
   vec.push_back(g.z);
 }
 
-void generate_cross_section_color(vector<float> &position, vector<float> &color)
+void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &vec)
 {
+  push_glm_to_vector(a, vec);
+  push_glm_to_vector(b, vec);
+  push_glm_to_vector(c, vec);
+  push_glm_to_vector(d, vec);
+}
 
+void generate_cross_section(vector<float> vecs)
+{
+  vector<int> cross_section_right_index, cross_section_up_index, cross_section_left_index, cross_section_down_index;
   int i = 0, num_vertices = vertices.size() / 3;
   float c = 0.0f;
 
@@ -1064,35 +1101,57 @@ void generate_cross_section_color(vector<float> &position, vector<float> &color)
     int i6 = i5 + 3;
     int i7 = i6 + 3;
 
-    glm::vec3 p0 = find_point(position, i0);
-    glm::vec3 p1 = find_point(position, i1);
-    glm::vec3 p2 = find_point(position, i2);
-    glm::vec3 p3 = find_point(position, i3);
-    glm::vec3 p4 = find_point(position, i4);
-    glm::vec3 p5 = find_point(position, i5);
-    glm::vec3 p6 = find_point(position, i6);
-    glm::vec3 p7 = find_point(position, i7);
+    glm::vec3 p0 = find_point(vecs, i0);
+    glm::vec3 p1 = find_point(vecs, i1);
+    glm::vec3 p2 = find_point(vecs, i2);
+    glm::vec3 p3 = find_point(vecs, i3);
+    glm::vec3 p4 = find_point(vecs, i4);
+    glm::vec3 p5 = find_point(vecs, i5);
+    glm::vec3 p6 = find_point(vecs, i6);
+    glm::vec3 p7 = find_point(vecs, i7);
 
-    glm::vec3 t0 = find_triangle_normal(p0, p4, p5);
-    glm::vec3 t1 = find_triangle_normal(p0, p7, p4);
-    glm::vec3 t2 = find_triangle_normal(p1, p0, p5);
-    glm::vec3 t3 = find_triangle_normal(p1, p5, p6);
-    glm::vec3 t4 = find_triangle_normal(p2, p1, p6);
-    glm::vec3 t5 = find_triangle_normal(p2, p6, p3);
-    glm::vec3 t6 = find_triangle_normal(p3, p6, p7);
-    glm::vec3 t7 = find_triangle_normal(p3, p7, p0);
+    glm::vec3 n0 = find_triangle_normal(p0, p4, p5);
+    glm::vec3 n1 = find_triangle_normal(p1, p5, p6);
+    glm::vec3 n2 = find_triangle_normal(p2, p6, p7);
 
-    glm::vec3 n0 = pseudo_normal(t0, t1);
-    glm::vec3 n1 = pseudo_normal(t2, t3);
-    glm::vec3 n2 = pseudo_normal(t4, t5);
-    glm::vec3 n3 = pseudo_normal(t6, t7);
- 
-    push_glm_to_color(t0, color);
-    push_glm_to_color(t2, color);
-    push_glm_to_color(t4, color);
-    push_glm_to_color(t6, color);
+    glm::vec3 n3 = find_triangle_normal(p3, p7, p4);
 
+    push_side_to_vector(p0, p1, p4, p5, cross_section_right);
+    push_side_to_color(n0, n0, n0, n0, cross_section_right_color);
+    push_cross_section_index(cross_section_right_index, index);
+
+    push_side_to_vector(p1, p2, p5, p6, cross_section_up);
+    push_side_to_color(n1, n1, n1, n1, cross_section_up_color);
+    push_cross_section_index(cross_section_up_index, index);
+
+    push_side_to_vector(p2, p3, p6, p7, cross_section_left);
+    push_side_to_color(n2, n2, n2, n2, cross_section_left_color);
+    push_cross_section_index(cross_section_left_index, index);
+
+    push_side_to_vector(p3, p0, p7, p4, cross_section_down);
+    push_side_to_color(n3, n3, n3, n3, cross_section_down_color);
+    push_cross_section_index(cross_section_down_index, index);
   }
+
+  set_one_vbo_one_vao_basic(pipelineProgram, cross_section_right, cross_section_right_color, vao_cross_section_right);
+  set_one_vbo_one_vao_basic(pipelineProgram, cross_section_up, cross_section_up_color, vao_cross_section_up);
+  set_one_vbo_one_vao_basic(pipelineProgram, cross_section_left, cross_section_left_color, vao_cross_section_left);
+  set_one_vbo_one_vao_basic(pipelineProgram, cross_section_down, cross_section_down_color, vao_cross_section_down);
+
+  set_ebo(cross_section_right_index, ebo_cross_section_right);
+  set_ebo(cross_section_up_index, ebo_cross_section_up);
+  set_ebo(cross_section_left_index, ebo_cross_section_left);
+  set_ebo(cross_section_down_index, ebo_cross_section_down);
+
+}
+
+void push_cross_section_index(vector<int> &indexes, int i) {
+    indexes.push_back(i);
+    indexes.push_back(i + 2);
+    indexes.push_back(i + 3);
+    indexes.push_back(i);
+    indexes.push_back(i + 3);
+    indexes.push_back(i + 1);
 }
 
 void push_glm_to_color(glm::vec3 &n, vector<float> &color)
@@ -1102,6 +1161,15 @@ void push_glm_to_color(glm::vec3 &n, vector<float> &color)
   color.push_back(n.z);
   color.push_back(alpha);
 }
+
+void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &color)
+{
+  push_glm_to_color(a, color);
+  push_glm_to_color(b, color);
+  push_glm_to_color(c, color);
+  push_glm_to_color(d, color);
+}
+
 
 glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2) {
   return glm::normalize(glm::cross(n1, n2));
