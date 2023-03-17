@@ -360,9 +360,9 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  matrix.LookAt(5.0, 10.0, 15.0,
-                0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0);
+  // matrix.LookAt(5.0, 10.0, 15.0,
+  //               0.0, 0.0, 0.0,
+  //               0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
@@ -371,9 +371,9 @@ void displayFunc()
   glm::vec3 focus = eyes + frenet.tangent;
   glm::vec3 up = -frenet.binormal;
 
-  // matrix.LookAt(eyes.x, eyes.y, eyes.z,
-  //               focus.x, focus.y, focus.z,
-  //               up.x, up.y, up.z);
+  matrix.LookAt(eyes.x, eyes.y, eyes.z,
+                focus.x, focus.y, focus.z,
+                up.x, up.y, up.z);
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -395,7 +395,7 @@ void displayFunc()
   glBindVertexArray(vao_vertices);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
   glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
-
+  
   glBindVertexArray(vao_cross_section_right);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_right);
   glDrawElements(GL_TRIANGLES, cross_section_side_size, GL_UNSIGNED_INT, 0);
@@ -1032,8 +1032,6 @@ void generate_cross_section(vector<float> vecs)
   for (; i < num_vertices; ++i)
   {
 
-    if (i == num_vertices - 1) continue;
-
     int index = i * 4;
     int i0 = index * 3;
     int i1 = i0 + 3;
@@ -1088,6 +1086,8 @@ void generate_cross_section(vector<float> vecs)
   set_ebo(cross_section_left_index, ebo_cross_section_left);
   set_ebo(cross_section_down_index, ebo_cross_section_down);
 
+  cout << cross_section_right_index.size() << '\n';
+  cross_section_side_size = cross_section_right_index.size() - 12;
 }
 
 void push_cross_section_index(vector<int> &indexes, int i) {
@@ -1097,7 +1097,6 @@ void push_cross_section_index(vector<int> &indexes, int i) {
     indexes.push_back(i);
     indexes.push_back(i + 3);
     indexes.push_back(i + 1);
-    cross_section_side_size += 6;
 }
 
 void push_glm_to_color(glm::vec3 &n, vector<float> &color)
