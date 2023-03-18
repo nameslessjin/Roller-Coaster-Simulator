@@ -53,7 +53,6 @@ void do_vertex(struct Pos &coords);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
 glm::vec3 find_point(vector<float> &position, int index);
-glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2);
 void push_glm_to_color(glm::vec3 &n, vector<float> &color);
 void fill_ground();
 void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &vec);
@@ -568,7 +567,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 void initScene(int argc, char *argv[])
 {
 
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
 
   // initialize program pipeline
   pipelineProgram = new BasicPipelineProgram;
@@ -1026,6 +1025,12 @@ void generate_cross_section(vector<float> vecs)
     int i6 = i5 + 3;
     int i7 = i6 + 3;
 
+    index = ((i + 2) % num_vertices) * 4;
+    int i8 = index * 3;
+    int i9 = i8 + 3;
+    int i10 = i9 + 3;
+    int i11 = i10 + 3;
+
     glm::vec3 p0 = find_point(vecs, i0);
     glm::vec3 p1 = find_point(vecs, i1);
     glm::vec3 p2 = find_point(vecs, i2);
@@ -1034,27 +1039,36 @@ void generate_cross_section(vector<float> vecs)
     glm::vec3 p5 = find_point(vecs, i5);
     glm::vec3 p6 = find_point(vecs, i6);
     glm::vec3 p7 = find_point(vecs, i7);
+    glm::vec3 p8 = find_point(vecs, i8);
+    glm::vec3 p9 = find_point(vecs, i9);
+    glm::vec3 p10 = find_point(vecs, i10);
+    glm::vec3 p11 = find_point(vecs, i11);
 
     glm::vec3 n0 = find_triangle_normal(p0, p4, p5);
     glm::vec3 n1 = find_triangle_normal(p1, p5, p6);
     glm::vec3 n2 = find_triangle_normal(p2, p6, p7);
-
     glm::vec3 n3 = find_triangle_normal(p3, p7, p4);
 
+    glm::vec3 n4 = find_triangle_normal(p4, p8, p9);
+    glm::vec3 n5 = find_triangle_normal(p5, p9, p10);
+    glm::vec3 n6 = find_triangle_normal(p6, p10, p11);
+    glm::vec3 n7 = find_triangle_normal(p7, p11, p8);
+
+    index = i * 4;
     push_side_to_vector(p0, p1, p4, p5, cross_section_right);
-    push_side_to_color(n0, n0, n0, n0, cross_section_right_color);
+    push_side_to_color(n0, n0, n4, n4, cross_section_right_color);
     push_cross_section_index(cross_section_right_index, index);
 
     push_side_to_vector(p1, p2, p5, p6, cross_section_up);
-    push_side_to_color(n1, n1, n1, n1, cross_section_up_color);
+    push_side_to_color(n1, n1, n5, n5, cross_section_up_color);
     push_cross_section_index(cross_section_up_index, index);
 
     push_side_to_vector(p2, p3, p6, p7, cross_section_left);
-    push_side_to_color(n2, n2, n2, n2, cross_section_left_color);
+    push_side_to_color(n2, n2, n6, n6, cross_section_left_color);
     push_cross_section_index(cross_section_left_index, index);
 
     push_side_to_vector(p3, p0, p7, p4, cross_section_down);
-    push_side_to_color(n3, n3, n3, n3, cross_section_down_color);
+    push_side_to_color(n3, n3, n7, n7, cross_section_down_color);
     push_cross_section_index(cross_section_down_index, index);
   }
 
@@ -1095,10 +1109,6 @@ void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, 
   push_glm_to_color(b, color);
   push_glm_to_color(c, color);
   push_glm_to_color(d, color);
-}
-
-glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2) {
-  return glm::normalize(glm::cross(n1, n2));
 }
 
 glm::vec3 find_point(vector<float> &position, int index) {
@@ -1170,7 +1180,7 @@ void set_light(BasicPipelineProgram *pipeline) {
   glUniform3fv(h_viewLightDirection, 1, viewLightDirection);
 
   // set properties
-  float La[4] = {1, 1, 1, 0}, Ld[4] = {1, 1, 1, 0}, Ls[4] = {1, 1, 1, 0}, ka[4] = {1, 1, 1, 0}, kd[4] = {1, 1, 1, 0}, ks[4] = {1, 1, 1, 0}, alpha = 1;
+  float La[4] = {0.1, 0.1, 0.1, 0}, Ld[4] = {0.1, 0.1, 0.1, 0}, Ls[4] = {0.7, 0.7, 0.7, 0}, ka[4] = {0.1, 0.1, 0.1, 0}, kd[4] = {0.1, 0.1, 0.1, 0}, ks[4] = {0.7, 0.7, 0.7, 0}, alpha = 0.5;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");

@@ -36,9 +36,7 @@ void main()
   float s = max(dot(reflectDir, eyedir), 0.0f);
 
   // compute the final color
-  // c = ka * La + d * kd * Ld + pow(s, alpha) * ks * Ls;
-
   c = ka * La + d * kd * Ld + pow(s, alpha) * ks * Ls;
-  
 
+  // c = col;
 }
