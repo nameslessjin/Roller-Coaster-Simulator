@@ -357,10 +357,6 @@ void displayFunc()
                 focus.x, focus.y, focus.z,
                 up.x, up.y, up.z);
 
-  // bind shader
-  pipelineProgram->Bind();
-
-  set_light(pipelineProgram);
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -370,8 +366,10 @@ void displayFunc()
   matrix.Scale(landScale[0], landScale[1], landScale[2]);
 
 
+  // bind shader
+  pipelineProgram->Bind();
   set_matrix(pipelineProgram);
-
+  set_light(pipelineProgram);
 
   glBindVertexArray(vao_vertices);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
@@ -1142,15 +1140,6 @@ void set_matrix(BasicPipelineProgram *pipeline)
   pipeline->SetModelViewMatrix(m);
   pipeline->SetProjectionMatrix(p);
 
-  GLuint program = pipeline->GetProgramHandle();
-
-  // set up Normal matrix
-  GLint h_normalMatrix = glGetUniformLocation(program, "normalMatrix");
-  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
-  matrix.GetNormalMatrix(normal);
-  GLboolean isRowMajor = GL_FALSE;
-  glUniformMatrix4fv(h_normalMatrix, 1, isRowMajor, normal);
-
 }
 
 void set_uniform(GLuint program, float *var, string name) {
@@ -1160,13 +1149,13 @@ void set_uniform(GLuint program, float *var, string name) {
 
 void set_light(BasicPipelineProgram *pipeline) {
 
-  float view[16], lightDirection[4] = {0.0f, 1.0f, 0.0f, 0.0f}, viewLightDirection[3];
+  float view[16], lightDirection[4] = {0.0f, 1.0f, 0.0f}, viewLightDirection[3], n[16];
 
   GLuint program = pipeline->GetProgramHandle();
 
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+  matrix.LoadIdentity();
   matrix.GetMatrix(view);
-  GLint h_viewLightDirection = glGetUniformLocation(program, "viewLightDirection");
 
   glm::mat4 mat_view = glm::make_mat4(view);
   glm::vec4 vec_light_dir = glm::make_vec4(lightDirection);
@@ -1177,10 +1166,11 @@ void set_light(BasicPipelineProgram *pipeline) {
   viewLightDirection[2] = vec_viewLightDirection.z;
 
   // upload viewLightDirection to the GPU
+  GLint h_viewLightDirection = glGetUniformLocation(program, "viewLightDirection");
   glUniform3fv(h_viewLightDirection, 1, viewLightDirection);
 
   // set properties
-  float La[4] = {0.1, 0.1, 0.1, 0}, Ld[4] = {0.1, 0.1, 0.1, 0}, Ls[4] = {0.7, 0.7, 0.7, 0}, ka[4] = {0.1, 0.1, 0.1, 0}, kd[4] = {0.1, 0.1, 0.1, 0}, ks[4] = {0.7, 0.7, 0.7, 0}, alpha = 0.5;
+  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {0.2, 0.2, 0.2}, Ls[4] = {0.5, 0.5, 0.5}, ka[4] = {0.5, 0.5, 0.5}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {1.0, 1.0, 1.0}, alpha = 1.0;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");
@@ -1190,6 +1180,12 @@ void set_light(BasicPipelineProgram *pipeline) {
   set_uniform(program, kd, "kd");
   set_uniform(program, ks, "ks");
   set_uniform(program, &alpha, "alpha");
+
+  // set up Normal matrix
+  GLint h_normalMatrix = glGetUniformLocation(program, "normalMatrix");
+  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+  matrix.GetNormalMatrix(n);
+  glUniformMatrix4fv(h_normalMatrix, 1, GL_FALSE, n);
 
 }
 
