@@ -9,6 +9,8 @@
         "deque": "cpp",
         "list": "cpp",
         "string": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "filesystem": "cpp",
+        "stdexcept": "cpp"
     }
 }

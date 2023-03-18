@@ -20,6 +20,7 @@
 #include <vector>
 #include <map>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #if defined(WIN32) || defined(_WIN32)
 #ifdef _DEBUG
@@ -51,7 +52,6 @@ void generate_cross_section(vector<float> vecs);
 void do_vertex(struct Pos &coords);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
-void fill_cross_section(GLuint &ebo);
 glm::vec3 find_point(vector<float> &position, int index);
 glm::vec3 pseudo_normal(glm::vec3 n1, glm::vec3 n2);
 void push_glm_to_color(glm::vec3 &n, vector<float> &color);
@@ -67,6 +67,7 @@ void set_ebo(vector<int> &indexes, GLuint &ebo);
 
 // background image
 void set_matrix(BasicPipelineProgram *pipeline);
+void set_light(BasicPipelineProgram *pipeline);
 
 // hw2
 struct Pos catmull_rom(float u, glm::mat3x4 &m);
@@ -87,24 +88,6 @@ typedef enum
   SCALE
 } CONTROL_STATE;
 CONTROL_STATE controlState = ROTATE;
-
-// Color mode
-typedef enum
-{
-  GRAYSCALE,
-  RGB
-} COLOR_MODE;
-COLOR_MODE color_mode = GRAYSCALE;
-
-// Drawing mode
-typedef enum
-{
-  POINT,
-  LINE,
-  SMOOTH,
-  SOLID_WIREFRAME,
-} MODE_STATE;
-MODE_STATE mode = POINT;
 
 // animation mode
 int animation = 0;
@@ -375,6 +358,11 @@ void displayFunc()
                 focus.x, focus.y, focus.z,
                 up.x, up.y, up.z);
 
+  // bind shader
+  pipelineProgram->Bind();
+
+  set_light(pipelineProgram);
+
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
   matrix.Rotate(landRotate[0], 1, 0, 0);
@@ -382,15 +370,9 @@ void displayFunc()
   matrix.Rotate(landRotate[2], 0, 0, 1);
   matrix.Scale(landScale[0], landScale[1], landScale[2]);
 
-  // bind shader
-  pipelineProgram->Bind();
 
   set_matrix(pipelineProgram);
 
-  // get loc for mode in vertex shader
-  GLuint loc = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
-
-  glUniform1i(loc, 0);
 
   glBindVertexArray(vao_vertices);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
@@ -586,7 +568,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 void initScene(int argc, char *argv[])
 {
 
-  glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
   // initialize program pipeline
   pipelineProgram = new BasicPipelineProgram;
@@ -1136,7 +1118,7 @@ glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3)
 
 void set_matrix(BasicPipelineProgram *pipeline)
 {
-  float m[16], p[16];
+  float m[16], p[16], normal[16];
 
   // set up ModelView
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
@@ -1149,7 +1131,58 @@ void set_matrix(BasicPipelineProgram *pipeline)
   // set variable
   pipeline->SetModelViewMatrix(m);
   pipeline->SetProjectionMatrix(p);
+
+  GLuint program = pipeline->GetProgramHandle();
+
+  // set up Normal matrix
+  GLint h_normalMatrix = glGetUniformLocation(program, "normalMatrix");
+  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+  matrix.GetNormalMatrix(normal);
+  GLboolean isRowMajor = GL_FALSE;
+  glUniformMatrix4fv(h_normalMatrix, 1, isRowMajor, normal);
+
 }
+
+void set_uniform(GLuint program, float *var, string name) {
+  GLint h = glGetUniformLocation(program, name.c_str());
+  glUniform4fv(h, 1, var);
+}
+
+void set_light(BasicPipelineProgram *pipeline) {
+
+  float view[16], lightDirection[4] = {0.0f, 1.0f, 0.0f, 0.0f}, viewLightDirection[3];
+
+  GLuint program = pipeline->GetProgramHandle();
+
+  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+  matrix.GetMatrix(view);
+  GLint h_viewLightDirection = glGetUniformLocation(program, "viewLightDirection");
+
+  glm::mat4 mat_view = glm::make_mat4(view);
+  glm::vec4 vec_light_dir = glm::make_vec4(lightDirection);
+  glm::vec4 vec_viewLightDirection = mat_view * vec_light_dir;
+
+  viewLightDirection[0] = vec_viewLightDirection.x;
+  viewLightDirection[1] = vec_viewLightDirection.y;
+  viewLightDirection[2] = vec_viewLightDirection.z;
+
+  // upload viewLightDirection to the GPU
+  glUniform3fv(h_viewLightDirection, 1, viewLightDirection);
+
+  // set properties
+  float La[4] = {1, 1, 1, 0}, Ld[4] = {1, 1, 1, 0}, Ls[4] = {1, 1, 1, 0}, ka[4] = {1, 1, 1, 0}, kd[4] = {1, 1, 1, 0}, ks[4] = {1, 1, 1, 0}, alpha = 1;
+
+  // La, Ka, Ld, kd, Ls, ks, alpha
+  set_uniform(program, La, "La");
+  set_uniform(program, Ld, "Ld");
+  set_uniform(program, Ls, "Ls");
+  set_uniform(program, ka, "ka");
+  set_uniform(program, kd, "kd");
+  set_uniform(program, ks, "ks");
+  set_uniform(program, &alpha, "alpha");
+
+}
+
 
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m)
 {
