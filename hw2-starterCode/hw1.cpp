@@ -338,9 +338,9 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  // matrix.LookAt(5.0, 10.0, 15.0,
-  //               0.0, 0.0, 0.0,
-  //               0.0, 1.0, 0.0);
+  matrix.LookAt(5.0, 10.0, 15.0,
+                0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
@@ -349,9 +349,9 @@ void displayFunc()
   glm::vec3 focus = eyes + frenet.tangent;
   glm::vec3 up = -frenet.binormal;
 
-  matrix.LookAt(eyes.x, eyes.y, eyes.z,
-                focus.x, focus.y, focus.z,
-                up.x, up.y, up.z);
+  // matrix.LookAt(eyes.x, eyes.y, eyes.z,
+  //               focus.x, focus.y, focus.z,
+  //               up.x, up.y, up.z);
   
 
   // bind shader
@@ -716,8 +716,8 @@ void fill_lines(GLuint &ebo)
     lines.push_back(index);
   }
 
-  // lines.push_back(index - 1);
-  // lines.push_back(0);
+  lines.push_back(index - 1);
+  lines.push_back(0);
 
   // cout << "spline size: " << frenets.size() << '\n';
   // cout << "lines size: " << lines.size() << '\n';
@@ -1063,7 +1063,7 @@ void generate_cross_section(vector<float> vecs)
   set_ebo(cross_section_down_index, ebo_cross_section_down);
 
   // cout << cross_section_right_index.size() << '\n';
-  cross_section_side_size = cross_section_right_index.size() - 6;
+  cross_section_side_size = cross_section_right_index.size();
 }
 
 void push_cross_section_index(vector<int> &indexes, int i) {
@@ -1131,9 +1131,7 @@ void set_uniform(GLuint program, float *var, string name) {
 
 void set_light(BasicPipelineProgram *pipeline) {
 
-  float view[16], lightDirection[4] = {1.0f, 1.0f, 0.0f}, viewLightDirection[3], n[16];
-
-  GLuint program = pipeline->GetProgramHandle();
+  float view[16], lightDirection[4] = {0.0f, 1.0f, 0.0f}, viewLightDirection[3], n[16];
 
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
   matrix.GetMatrix(view);
@@ -1147,12 +1145,13 @@ void set_light(BasicPipelineProgram *pipeline) {
   viewLightDirection[2] = vec_viewLightDirection.z;
 
   // upload viewLightDirection to the GPU
+  GLuint program = pipeline->GetProgramHandle();
   GLint h_viewLightDirection = glGetUniformLocation(program, "viewLightDirection");
   glUniform3fv(h_viewLightDirection, 1, viewLightDirection);
 
   // set properties
-  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {0.2, 0.2, 0.2}, Ls[4] = {0.5, 0.5, 0.5};
-  float ka[4] = {0.5, 0.5, 0.5}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {0.5, 0.5, 0.5}, alpha = 1.0;
+  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {0.5, 0.5, 0.5}, Ls[4] = {0.5, 0.5, 0.5};
+  float ka[4] = {0.5, 0.5, 0.5}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {0.5, 0.5, 0.5}, alpha = 0.5;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");
@@ -1165,7 +1164,6 @@ void set_light(BasicPipelineProgram *pipeline) {
 
   // set up Normal matrix
   GLint h_normalMatrix = glGetUniformLocation(program, "normalMatrix");
-  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
   matrix.GetNormalMatrix(n);
   glUniformMatrix4fv(h_normalMatrix, 1, GL_FALSE, n);
 
