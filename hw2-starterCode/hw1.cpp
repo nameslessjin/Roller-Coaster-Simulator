@@ -100,11 +100,7 @@ float landScale[3] = {1.0f, 1.0f, 1.0f};
 // attributes for window and image
 int windowWidth = 1280;
 int windowHeight = 720;
-int image_width = 0, image_height = 0;
-int image_center_x = 0, image_center_y = 0;
-float height = 0;
-float scale = 0.1;
-float red = 0, green = 0, blue = 0, alpha = 1;
+float alpha = 1.0f;
 
 char windowTitle[512] = "CSCI 420 homework II";
 
@@ -356,7 +352,11 @@ void displayFunc()
   matrix.LookAt(eyes.x, eyes.y, eyes.z,
                 focus.x, focus.y, focus.z,
                 up.x, up.y, up.z);
+  
 
+  // bind shader
+  pipelineProgram->Bind();
+  set_light(pipelineProgram);
 
   // Transformation
   matrix.Translate(landTranslate[0], landTranslate[1], landTranslate[2]);
@@ -365,11 +365,7 @@ void displayFunc()
   matrix.Rotate(landRotate[2], 0, 0, 1);
   matrix.Scale(landScale[0], landScale[1], landScale[2]);
 
-
-  // bind shader
-  pipelineProgram->Bind();
   set_matrix(pipelineProgram);
-  set_light(pipelineProgram);
 
   glBindVertexArray(vao_vertices);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
@@ -399,6 +395,7 @@ void displayFunc()
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_ground);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
   glutSwapBuffers();
@@ -704,7 +701,7 @@ void get_vertices()
 
   generate_cross_section(cross_section_vertices);
 
-  cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << '\n';
+  // cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << '\n';
 }
 
 /* Generate points for line mode */
@@ -722,8 +719,8 @@ void fill_lines(GLuint &ebo)
   // lines.push_back(index - 1);
   // lines.push_back(0);
 
-  cout << "spline size: " << frenets.size() << '\n';
-  cout << "lines size: " << lines.size() << '\n';
+  // cout << "spline size: " << frenets.size() << '\n';
+  // cout << "lines size: " << lines.size() << '\n';
 
   set_ebo(lines, ebo);
 }
@@ -1023,12 +1020,6 @@ void generate_cross_section(vector<float> vecs)
     int i6 = i5 + 3;
     int i7 = i6 + 3;
 
-    index = ((i + 2) % num_vertices) * 4;
-    int i8 = index * 3;
-    int i9 = i8 + 3;
-    int i10 = i9 + 3;
-    int i11 = i10 + 3;
-
     glm::vec3 p0 = find_point(vecs, i0);
     glm::vec3 p1 = find_point(vecs, i1);
     glm::vec3 p2 = find_point(vecs, i2);
@@ -1037,36 +1028,27 @@ void generate_cross_section(vector<float> vecs)
     glm::vec3 p5 = find_point(vecs, i5);
     glm::vec3 p6 = find_point(vecs, i6);
     glm::vec3 p7 = find_point(vecs, i7);
-    glm::vec3 p8 = find_point(vecs, i8);
-    glm::vec3 p9 = find_point(vecs, i9);
-    glm::vec3 p10 = find_point(vecs, i10);
-    glm::vec3 p11 = find_point(vecs, i11);
 
     glm::vec3 n0 = find_triangle_normal(p0, p4, p5);
     glm::vec3 n1 = find_triangle_normal(p1, p5, p6);
     glm::vec3 n2 = find_triangle_normal(p2, p6, p7);
     glm::vec3 n3 = find_triangle_normal(p3, p7, p4);
 
-    glm::vec3 n4 = find_triangle_normal(p4, p8, p9);
-    glm::vec3 n5 = find_triangle_normal(p5, p9, p10);
-    glm::vec3 n6 = find_triangle_normal(p6, p10, p11);
-    glm::vec3 n7 = find_triangle_normal(p7, p11, p8);
-
     index = i * 4;
     push_side_to_vector(p0, p1, p4, p5, cross_section_right);
-    push_side_to_color(n0, n0, n4, n4, cross_section_right_color);
+    push_side_to_color(n0, n0, n0, n0, cross_section_right_color);
     push_cross_section_index(cross_section_right_index, index);
 
     push_side_to_vector(p1, p2, p5, p6, cross_section_up);
-    push_side_to_color(n1, n1, n5, n5, cross_section_up_color);
+    push_side_to_color(n1, n1, n1, n1, cross_section_up_color);
     push_cross_section_index(cross_section_up_index, index);
 
     push_side_to_vector(p2, p3, p6, p7, cross_section_left);
-    push_side_to_color(n2, n2, n6, n6, cross_section_left_color);
+    push_side_to_color(n2, n2, n2, n2, cross_section_left_color);
     push_cross_section_index(cross_section_left_index, index);
 
     push_side_to_vector(p3, p0, p7, p4, cross_section_down);
-    push_side_to_color(n3, n3, n7, n7, cross_section_down_color);
+    push_side_to_color(n3, n3, n3, n3, cross_section_down_color);
     push_cross_section_index(cross_section_down_index, index);
   }
 
@@ -1080,8 +1062,8 @@ void generate_cross_section(vector<float> vecs)
   set_ebo(cross_section_left_index, ebo_cross_section_left);
   set_ebo(cross_section_down_index, ebo_cross_section_down);
 
-  cout << cross_section_right_index.size() << '\n';
-  cross_section_side_size = cross_section_right_index.size() - 12;
+  // cout << cross_section_right_index.size() << '\n';
+  cross_section_side_size = cross_section_right_index.size() - 6;
 }
 
 void push_cross_section_index(vector<int> &indexes, int i) {
@@ -1126,7 +1108,7 @@ glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3)
 
 void set_matrix(BasicPipelineProgram *pipeline)
 {
-  float m[16], p[16], normal[16];
+  float m[16], p[16];
 
   // set up ModelView
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
@@ -1149,12 +1131,11 @@ void set_uniform(GLuint program, float *var, string name) {
 
 void set_light(BasicPipelineProgram *pipeline) {
 
-  float view[16], lightDirection[4] = {0.0f, 1.0f, 0.0f}, viewLightDirection[3], n[16];
+  float view[16], lightDirection[4] = {1.0f, 1.0f, 0.0f}, viewLightDirection[3], n[16];
 
   GLuint program = pipeline->GetProgramHandle();
 
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
-  matrix.LoadIdentity();
   matrix.GetMatrix(view);
 
   glm::mat4 mat_view = glm::make_mat4(view);
@@ -1170,7 +1151,8 @@ void set_light(BasicPipelineProgram *pipeline) {
   glUniform3fv(h_viewLightDirection, 1, viewLightDirection);
 
   // set properties
-  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {0.2, 0.2, 0.2}, Ls[4] = {0.5, 0.5, 0.5}, ka[4] = {0.5, 0.5, 0.5}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {1.0, 1.0, 1.0}, alpha = 1.0;
+  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {0.2, 0.2, 0.2}, Ls[4] = {0.5, 0.5, 0.5};
+  float ka[4] = {0.5, 0.5, 0.5}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {0.5, 0.5, 0.5}, alpha = 1.0;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");

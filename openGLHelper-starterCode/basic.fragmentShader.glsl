@@ -21,8 +21,6 @@ uniform float alpha; // shininess
 
 in vec4 col;
 
-uniform int mode;
-
 void main()
 {
   // camera is at (0,0,0) after the modelview transformation
