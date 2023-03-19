@@ -19,8 +19,6 @@ uniform vec4 kd; // mesh diffuse
 uniform vec4 ks; // mesh specular
 uniform float alpha; // shininess
 
-in vec4 col;
-
 void main()
 {
   // camera is at (0,0,0) after the modelview transformation
@@ -35,6 +33,5 @@ void main()
 
   // compute the final color
   c = ka * La + d * kd * Ld + pow(s, alpha) * ks * Ls;
-
-  // c = col;
+  // c = vec4(viewNormal, 1.0f);
 }

@@ -338,9 +338,9 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  matrix.LookAt(5.0, 10.0, 15.0,
-                0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0);
+  // matrix.LookAt(5.0, 10.0, 15.0,
+  //               0.0, 0.0, 0.0,
+  //               0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
@@ -349,9 +349,9 @@ void displayFunc()
   glm::vec3 focus = eyes + frenet.tangent;
   glm::vec3 up = -frenet.binormal;
 
-  // matrix.LookAt(eyes.x, eyes.y, eyes.z,
-  //               focus.x, focus.y, focus.z,
-  //               up.x, up.y, up.z);
+  matrix.LookAt(eyes.x, eyes.y, eyes.z,
+                focus.x, focus.y, focus.z,
+                up.x, up.y, up.z);
   
 
   // bind shader
@@ -855,9 +855,9 @@ void set_one_vbo_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &po
 
   // get the location of the shader variable "color"
   offset += size;
-  loc = glGetAttribLocation(pipeline->GetProgramHandle(), "color");
+  loc = glGetAttribLocation(pipeline->GetProgramHandle(), "normal");
   glEnableVertexAttribArray(loc);
-  glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
 
   // unbind vbo and vao
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -930,7 +930,6 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
   color.push_back(c);
   color.push_back(c);
   color.push_back(c);
-  color.push_back(alpha);
 
   // assign frenet
   Frenet frenet;
@@ -1029,26 +1028,32 @@ void generate_cross_section(vector<float> vecs)
     glm::vec3 p6 = find_point(vecs, i6);
     glm::vec3 p7 = find_point(vecs, i7);
 
-    glm::vec3 n0 = find_triangle_normal(p0, p4, p5);
-    glm::vec3 n1 = find_triangle_normal(p1, p5, p6);
-    glm::vec3 n2 = find_triangle_normal(p2, p6, p7);
-    glm::vec3 n3 = find_triangle_normal(p3, p7, p4);
+    Frenet f = frenets[i];
+    glm::vec3 right = f.binormal;
+    glm::vec3 left = -f.binormal;
+    glm::vec3 up = f.normal;
+    glm::vec3 down = -f.normal;
+
+    // glm::vec3 n0 = find_triangle_normal(p0, p4, p5);
+    // glm::vec3 n1 = find_triangle_normal(p1, p5, p6);
+    // glm::vec3 n2 = find_triangle_normal(p2, p6, p7);
+    // glm::vec3 n3 = find_triangle_normal(p3, p7, p4);
 
     index = i * 4;
     push_side_to_vector(p0, p1, p4, p5, cross_section_right);
-    push_side_to_color(n0, n0, n0, n0, cross_section_right_color);
+    push_side_to_color(right, right, right, right, cross_section_right_color);
     push_cross_section_index(cross_section_right_index, index);
 
     push_side_to_vector(p1, p2, p5, p6, cross_section_up);
-    push_side_to_color(n1, n1, n1, n1, cross_section_up_color);
+    push_side_to_color(up, up, up, up, cross_section_up_color);
     push_cross_section_index(cross_section_up_index, index);
 
     push_side_to_vector(p2, p3, p6, p7, cross_section_left);
-    push_side_to_color(n2, n2, n2, n2, cross_section_left_color);
+    push_side_to_color(left, left, left, left, cross_section_left_color);
     push_cross_section_index(cross_section_left_index, index);
 
     push_side_to_vector(p3, p0, p7, p4, cross_section_down);
-    push_side_to_color(n3, n3, n3, n3, cross_section_down_color);
+    push_side_to_color(down, down, down, down, cross_section_down_color);
     push_cross_section_index(cross_section_down_index, index);
   }
 
@@ -1080,7 +1085,6 @@ void push_glm_to_color(glm::vec3 &n, vector<float> &color)
   color.push_back(n.x);
   color.push_back(n.y);
   color.push_back(n.z);
-  color.push_back(alpha);
 }
 
 void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &color)
