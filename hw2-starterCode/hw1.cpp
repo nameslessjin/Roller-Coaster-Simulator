@@ -743,8 +743,8 @@ void fill_ground() {
 
   // 0 | 1, 1
   grounds.push_back(l);
-  grounds.push_back(h);
   grounds.push_back(l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -756,8 +756,8 @@ void fill_ground() {
 
   // 1 | -1, 1
   grounds.push_back(-l);
-  grounds.push_back(h);
   grounds.push_back(l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -769,8 +769,8 @@ void fill_ground() {
 
   // 2 | 1, 1
   grounds.push_back(l);
-  grounds.push_back(h);
   grounds.push_back(-l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
@@ -782,8 +782,8 @@ void fill_ground() {
 
   // 3 | -1, -1
   grounds.push_back(-l);
-  grounds.push_back(h);
   grounds.push_back(-l);
+  grounds.push_back(h);
 
   colors.push_back(c);
   colors.push_back(c);
