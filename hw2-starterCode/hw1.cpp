@@ -58,6 +58,7 @@ void fill_ground();
 void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &vec);
 void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &color);
 void push_cross_section_index(vector<int> &indexes, int i);
+void render_normal_binormal();
 
 // set up vbo and vao
 void set_one_vbo_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
@@ -78,6 +79,8 @@ int mousePos[2]; // x,y coordinate of the mouse position
 int leftMouseButton = 0;   // 1 if pressed, 0 if not
 int middleMouseButton = 0; // 1 if pressed, 0 if not
 int rightMouseButton = 0;  // 1 if pressed, 0 if not
+
+float max_line_length = 0.001;
 
 // Transformation mode
 typedef enum
@@ -104,11 +107,9 @@ float alpha = 1.0f;
 
 char windowTitle[512] = "CSCI 420 homework II";
 
-// Input images
-
 // vertices
 vector<float> vertices, vertex_colors;
-GLuint vao_vertices;
+GLuint vao_vertices, vao_normal, vao_binormal;
 
 // lines
 GLuint ebo_line;
@@ -345,14 +346,14 @@ void displayFunc()
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
 
-  glm::vec3 eyes = frenet.point - frenet.binormal * 0.5f;
+  glm::vec3 eyes = frenet.point + frenet.normal * 0.5f;
   glm::vec3 focus = eyes + frenet.tangent;
-  glm::vec3 up = -frenet.binormal;
+  glm::vec3 up = frenet.normal;
 
   matrix.LookAt(eyes.x, eyes.y, eyes.z,
                 focus.x, focus.y, focus.z,
                 up.x, up.y, up.z);
-  
+
 
   // bind shader
   pipelineProgram->Bind();
@@ -370,7 +371,13 @@ void displayFunc()
   glBindVertexArray(vao_vertices);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
   glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
+
+  // glBindVertexArray(vao_normal);
+  // glDrawArrays(GL_LINES, 0, frenets.size() * 2);
   
+  // glBindVertexArray(vao_binormal);
+  // glDrawArrays(GL_LINES, 0, frenets.size() * 2);
+
   glBindVertexArray(vao_cross_section_right);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_cross_section_right);
   glDrawElements(GL_TRIANGLES, cross_section_side_size, GL_UNSIGNED_INT, 0);
@@ -562,7 +569,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 void initScene(int argc, char *argv[])
 {
 
-  glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
   // initialize program pipeline
   pipelineProgram = new BasicPipelineProgram;
@@ -580,6 +587,7 @@ void initScene(int argc, char *argv[])
   get_vertices();
   fill_lines(ebo_line);
   fill_ground();
+  render_normal_binormal();
 
   glEnable(GL_DEPTH_TEST);
 
@@ -671,8 +679,6 @@ void get_vertices()
   glm::mat3x4 control, m;
   glm::vec3 position, init_pos;
   Point p1, p2, p3, p4;
-
-  float max_line_length = 0.001;
 
   for (int s = 0; s < numSplines; ++s)
   {
@@ -1034,11 +1040,6 @@ void generate_cross_section(vector<float> vecs)
     glm::vec3 up = f.normal;
     glm::vec3 down = -f.normal;
 
-    // glm::vec3 n0 = find_triangle_normal(p0, p4, p5);
-    // glm::vec3 n1 = find_triangle_normal(p1, p5, p6);
-    // glm::vec3 n2 = find_triangle_normal(p2, p6, p7);
-    // glm::vec3 n3 = find_triangle_normal(p3, p7, p4);
-
     index = i * 4;
     push_side_to_vector(p0, p1, p4, p5, cross_section_right);
     push_side_to_color(right, right, right, right, cross_section_right_color);
@@ -1055,6 +1056,9 @@ void generate_cross_section(vector<float> vecs)
     push_side_to_vector(p3, p0, p7, p4, cross_section_down);
     push_side_to_color(down, down, down, down, cross_section_down_color);
     push_cross_section_index(cross_section_down_index, index);
+
+    // cout << "index: " << i << " right: " << glm::length(right) << " up: " << glm::length(up) << " left: " << glm::length(left) 
+    // << " down: " << glm::length(down) << '\n';
   }
 
   set_one_vbo_one_vao_basic(pipelineProgram, cross_section_right, cross_section_right_color, vao_cross_section_right);
@@ -1153,9 +1157,15 @@ void set_light(BasicPipelineProgram *pipeline) {
   GLint h_viewLightDirection = glGetUniformLocation(program, "viewLightDirection");
   glUniform3fv(h_viewLightDirection, 1, viewLightDirection);
 
+  // set up Normal matrix
+  GLint h_normalMatrix = glGetUniformLocation(program, "normalMatrix");
+  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+  matrix.GetNormalMatrix(n);
+  glUniformMatrix4fv(h_normalMatrix, 1, GL_FALSE, n);
+
   // set properties
-  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {0.5, 0.5, 0.5}, Ls[4] = {0.5, 0.5, 0.5};
-  float ka[4] = {0.5, 0.5, 0.5}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {0.5, 0.5, 0.5}, alpha = 0.5;
+  float La[4] = {1.0, 1.0, 1.0}, Ld[4] = {1.0, 1.0, 1.0}, Ls[4] = {1.0, 1.0, 1.0};
+  float ka[4] = {0.3, 0.3, 0.3}, kd[4] = {1, 1, 1}, ks[4] = {0.5, 0.5, 0.5}, alpha = 1.0;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");
@@ -1164,12 +1174,9 @@ void set_light(BasicPipelineProgram *pipeline) {
   set_uniform(program, ka, "ka");
   set_uniform(program, kd, "kd");
   set_uniform(program, ks, "ks");
-  set_uniform(program, &alpha, "alpha");
-
-  // set up Normal matrix
-  GLint h_normalMatrix = glGetUniformLocation(program, "normalMatrix");
-  matrix.GetNormalMatrix(n);
-  glUniformMatrix4fv(h_normalMatrix, 1, GL_FALSE, n);
+  // set_uniform(program, &alpha, "alpha");
+  GLint h_alpha = glGetUniformLocation(program, "alpha");
+  glUniform1f(h_alpha, alpha);
 
 }
 
@@ -1200,3 +1207,37 @@ void calculate_fernet(Frenet &f)
   f.binormal = b;
 }
 
+
+void render_normal_binormal() {
+
+  int num_vertices = vertices.size() / 3, i = 0;
+  vector<float> normals, binormals, nc, bc;
+
+  // render normal line segment as red and binormal as blue
+  for (; i < num_vertices; ++i) {
+    Frenet &f = frenets[i];
+    glm::vec3 n = f.point + f.normal;
+    glm::vec3 b = f.point + f.binormal;
+    push_glm_to_vector(f.point, normals);
+    push_glm_to_vector(n, normals);
+    nc.push_back(1.0f);
+    nc.push_back(0.0f);
+    nc.push_back(0.0f);
+    nc.push_back(1.0f);
+    nc.push_back(0.0f);
+    nc.push_back(0.0f);
+    push_glm_to_vector(f.point, binormals);
+    push_glm_to_vector(b, binormals);
+    bc.push_back(0.0f);
+    bc.push_back(0.0f);
+    bc.push_back(1.0f);
+    bc.push_back(0.0f);
+    bc.push_back(0.0f);
+    bc.push_back(1.0f);
+    // cout << "index: " << i << " tangent: " << glm::length(f.tangent) << " normal: " << glm::length(f.normal) 
+    // << " binormal: " << glm::length(f.binormal) << '\n';
+    
+  }
+  set_one_vbo_one_vao_basic(pipelineProgram, normals, nc, vao_normal);
+  set_one_vbo_one_vao_basic(pipelineProgram, binormals, bc, vao_binormal);
+}

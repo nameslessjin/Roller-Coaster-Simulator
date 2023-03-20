@@ -13,6 +13,8 @@ uniform mat4 normalMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 
+out vec3 color;
+
 void main()
 {
   // view-space pposition of the vertex
@@ -24,5 +26,6 @@ void main()
 
   // view-space normal
   viewNormal = normalize((normalMatrix * vec4(normal, 0.0f)).xyz);
+  color = normal;
 }
 
