@@ -81,6 +81,8 @@ int middleMouseButton = 0; // 1 if pressed, 0 if not
 int rightMouseButton = 0;  // 1 if pressed, 0 if not
 
 float max_line_length = 0.001;
+float time_step = 0.01;
+int speed_step = 50;
 
 // Transformation mode
 typedef enum
@@ -372,9 +374,9 @@ void displayFunc()
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
   glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
 
+  // draw normal and binormal
   // glBindVertexArray(vao_normal);
   // glDrawArrays(GL_LINES, 0, frenets.size() * 2);
-  
   // glBindVertexArray(vao_binormal);
   // glDrawArrays(GL_LINES, 0, frenets.size() * 2);
 
@@ -413,7 +415,13 @@ void idleFunc()
 
   if (animation == 1)
   {
-    counter += 100;
+    counter += speed_step;
+
+  // int index = counter % frenets.size();
+  // Frenet frenet = frenets[index];
+
+  // cout << "index: " << index << " normal: " << glm::to_string(frenet.normal) 
+  // << " binormal: " << glm::to_string(frenet.binormal) << '\n';
   }
 
   // make the screen update
@@ -541,7 +549,6 @@ void mouseButtonFunc(int button, int state, int x, int y)
 
 void keyboardFunc(unsigned char key, int x, int y)
 {
-
   switch (key)
   {
   case 27:   // ESC key
@@ -556,6 +563,13 @@ void keyboardFunc(unsigned char key, int x, int y)
   case 'x':
     // take a screenshot
     saveScreenshot("screenshot.jpg");
+    break;
+
+  case '.':
+    counter -= speed_step * 5;
+    break;
+  case ',':
+    counter += speed_step * 5;
     break;
 
   // GLUT_ACTIVE_CTRL and GLUT_ACTIVE_ALT doesn't work on Mac
@@ -684,6 +698,7 @@ void get_vertices()
   {
 
     Spline spline = splines[s];
+    float u = 0.0f;
 
     for (int i = 0; i < spline.numControlPoints - 3; ++i)
     {
@@ -698,6 +713,16 @@ void get_vertices()
           p1.z, p2.z, p3.z, p4.z);
 
       m = basis * control;
+
+      // while (u <= 1.0) {
+
+      //   Pos position = catmull_rom(u, m);
+
+      //   do_vertex(position);
+      //   u += time_step;
+      // }
+
+      // u = 0.0f;
 
       subdivide(0, 1, max_line_length, m);
     }
@@ -1139,7 +1164,7 @@ void set_uniform(GLuint program, float *var, string name) {
 
 void set_light(BasicPipelineProgram *pipeline) {
 
-  float view[16], lightDirection[4] = {0.0f, 1.0f, 0.0f}, viewLightDirection[3], n[16];
+  float view[16], lightDirection[4] = {0.0f, 0.0f, 1.0f}, viewLightDirection[3], n[16];
 
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
   matrix.GetMatrix(view);
@@ -1165,7 +1190,7 @@ void set_light(BasicPipelineProgram *pipeline) {
 
   // set properties
   float La[4] = {1.0, 1.0, 1.0}, Ld[4] = {1.0, 1.0, 1.0}, Ls[4] = {1.0, 1.0, 1.0};
-  float ka[4] = {0.3, 0.3, 0.3}, kd[4] = {1, 1, 1}, ks[4] = {0.5, 0.5, 0.5}, alpha = 1.0;
+  float ka[4] = {0.2, 0.2, 0.2}, kd[4] = {0.6, 0.6, 0.6}, ks[4] = {0.3, 0.3, 0.3}, alpha = 1.0;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");
@@ -1240,4 +1265,12 @@ void render_normal_binormal() {
   }
   set_one_vbo_one_vao_basic(pipelineProgram, normals, nc, vao_normal);
   set_one_vbo_one_vao_basic(pipelineProgram, binormals, bc, vao_binormal);
+}
+
+void print_frenet(int index) {
+  
+    Frenet frenet = frenets[index];
+
+    cout << "index: " << index << " normal: " << glm::to_string(frenet.normal) 
+    << " binormal: " << glm::to_string(frenet.binormal) << '\n';
 }
