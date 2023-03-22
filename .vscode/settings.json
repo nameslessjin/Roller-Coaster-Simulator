@@ -11,6 +11,7 @@
         "string": "cpp",
         "ostream": "cpp",
         "filesystem": "cpp",
-        "stdexcept": "cpp"
+        "stdexcept": "cpp",
+        "iosfwd": "cpp"
     }
 }
