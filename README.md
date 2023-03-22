@@ -34,3 +34,5 @@ spacebar: start/pause
 2. Track is circular and close with C1 continuity.  To see a good example of this condition, you can check circle.sp and star.sp.  Even if the u step is large size,
 the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files
 <br><br>
+3. Render a T-shaped rail cross-section.  The head of T is on the right side of the rail.  I made it big so it is more visible.
+<br><br>
