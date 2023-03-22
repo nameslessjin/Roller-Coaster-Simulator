@@ -32,6 +32,7 @@
 
 #if defined(WIN32) || defined(_WIN32)
 char shaderBasePath[1024] = SHADER_BASE_PATH;
+char textureShaderBasePath[1024] = "../textureShader";
 #else
 char shaderBasePath[1024] = "../openGLHelper-starterCode";
 char textureShaderBasePath[1024] = "../textureShader";
@@ -45,10 +46,9 @@ const char image_file[1024] = "Waterpl.jpg";
 // fill positions and color array
 void get_vertices();
 void fill_lines(GLuint &ebo);
-
 void generate_point(struct Pos &coords, vector<float> &position, vector<float> &color, vector<struct Frenet> &f);
 void generate_cross_section_vector(vector<struct Frenet> &f, vector<float> &position);
-void generate_cross_section(vector<float> vecs);
+void generate_cross_section(vector<float> &vecs);
 void do_vertex(struct Pos &coords);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
@@ -69,10 +69,11 @@ void set_ebo(vector<int> &indexes, GLuint &ebo);
 void set_matrix(BasicPipelineProgram *pipeline);
 void set_light(BasicPipelineProgram *pipeline);
 
-// hw2
+// calculate splines and frenet
 struct Pos catmull_rom(float u, glm::mat3x4 &m);
 void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m);
-void calculate_fernet(struct Frenet &f);
+void calculate_frenet(struct Frenet &f);
+void print_frenet(int index);
 
 int mousePos[2]; // x,y coordinate of the mouse position
 
@@ -80,9 +81,11 @@ int leftMouseButton = 0;   // 1 if pressed, 0 if not
 int middleMouseButton = 0; // 1 if pressed, 0 if not
 int rightMouseButton = 0;  // 1 if pressed, 0 if not
 
-float max_line_length = 0.001;
+int speed_coe = 100;
+float max_line_length = 0.1 / speed_coe;
 float time_step = 0.01;
-int speed_step = 50;
+int default_speed_step = 100;
+int speed_step = 1 * speed_coe;
 
 // Transformation mode
 typedef enum
@@ -118,7 +121,6 @@ GLuint ebo_line;
 
 // rail cross section
 vector<float> cross_section_vertices;
-
 vector<float> cross_section_left, cross_section_left_color;
 GLuint vao_cross_section_left, ebo_cross_section_left;
 vector<float> cross_section_right, cross_section_right_color;
@@ -127,13 +129,12 @@ vector<float> cross_section_up, cross_section_up_color;
 GLuint vao_cross_section_up, ebo_cross_section_up;
 vector<float> cross_section_down, cross_section_down_color;
 GLuint vao_cross_section_down, ebo_cross_section_down;
-
 int cross_section_side_size = 0;
-
 
 // groud
 GLuint vao_ground, ebo_ground, texture_ground;
 
+// pipeline and matrix
 OpenGLMatrix matrix;
 BasicPipelineProgram *pipelineProgram;
 BasicPipelineProgram *texturePipelineProgram;
@@ -146,6 +147,7 @@ struct Point
   double y;
   double z;
 };
+
 // spline struct
 // contains how many control points the spline has, and an array of control points
 struct Spline
@@ -153,6 +155,11 @@ struct Spline
   int numControlPoints;
   Point *points;
 };
+// the spline array
+Spline *splines;
+
+// total number of splines
+int numSplines;
 
 // Coordinates and tangents for each position
 struct Pos
@@ -169,14 +176,9 @@ struct Frenet
   glm::vec3 binormal;
   glm::vec3 normal;
 };
-
 vector<Frenet> frenets;
 
-// the spline array
-Spline *splines;
-// total number of splines
-int numSplines;
-
+// basis
 float s = 0.5;
 glm::mat4 basis = glm::mat4(
     -s, 2 * s, -s, 0,
@@ -341,9 +343,9 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  // matrix.LookAt(5.0, 10.0, 15.0,
-  //               0.0, 0.0, 0.0,
-  //               0.0, 1.0, 0.0);
+  matrix.LookAt(5.0, 10.0, 15.0,
+                0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
@@ -352,9 +354,9 @@ void displayFunc()
   glm::vec3 focus = eyes + frenet.tangent;
   glm::vec3 up = frenet.normal;
 
-  matrix.LookAt(eyes.x, eyes.y, eyes.z,
-                focus.x, focus.y, focus.z,
-                up.x, up.y, up.z);
+  // matrix.LookAt(eyes.x, eyes.y, eyes.z,
+  //               focus.x, focus.y, focus.z,
+  //               up.x, up.y, up.z);
 
 
   // bind shader
@@ -412,16 +414,10 @@ void displayFunc()
 
 void idleFunc()
 {
-
+  // animating
   if (animation == 1)
   {
     counter += speed_step;
-
-  // int index = counter % frenets.size();
-  // Frenet frenet = frenets[index];
-
-  // cout << "index: " << index << " normal: " << glm::to_string(frenet.normal) 
-  // << " binormal: " << glm::to_string(frenet.binormal) << '\n';
   }
 
   // make the screen update
@@ -557,7 +553,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 
   case ' ':
     animation = 1 - animation;
-    std::cout << "You pressed the spacebar." << endl;
+    std::cout << (animation ? "Animation Start" : "Animation Stop") << endl;
     break;
 
   case 'x':
@@ -566,10 +562,32 @@ void keyboardFunc(unsigned char key, int x, int y)
     break;
 
   case '.':
-    counter -= speed_step * 5;
+
+    // fast forward
+    counter += speed_step * 10;
     break;
   case ',':
-    counter += speed_step * 5;
+
+    // move backward
+    counter -= speed_step * 10;
+    break;
+
+  case '1':
+
+    // set to default speed
+    speed_step = default_speed_step;
+    break;
+
+  case '2':
+
+    // set to twice of the default speed
+    speed_step = default_speed_step * 2;
+    break;
+  
+  case '3':
+
+    // set to half of the default speed
+    speed_step = default_speed_step / 2;
     break;
 
   // GLUT_ACTIVE_CTRL and GLUT_ACTIVE_ALT doesn't work on Mac
@@ -691,21 +709,40 @@ void get_vertices()
 
   // 3 columns, 4 rows
   glm::mat3x4 control, m;
-  glm::vec3 position, init_pos;
-  Point p1, p2, p3, p4;
+  glm::vec3 position, init_pos, point, p1, p2, p3, p4;
+  vector<glm::vec3> points;
+  Point p;
 
   for (int s = 0; s < numSplines; ++s)
   {
 
     Spline spline = splines[s];
     float u = 0.0f;
+    int numControlPoints = spline.numControlPoints;
 
-    for (int i = 0; i < spline.numControlPoints - 3; ++i)
+    for (int i = 0; i < numControlPoints; ++i) {
+      p = spline.points[i];
+      point.x = p.x;
+      point.y = p.y;
+      point.z = p.z;
+      points.push_back(point);
+    }
+
+    // p.x = (spline.points[0].x + spline.points[numControlPoints - 2].x) / 2;
+    // p.y = (spline.points[0].y + spline.points[numControlPoints - 2].y) / 2;
+    // p.z = (spline.points[0].z + spline.points[numControlPoints - 2].z) / 2;
+    // point.x = p.x;
+    // point.y = p.y;
+    // point.z = p.z;
+    // points.push_back(point);
+    // numControlPoints += 1;
+
+    for (int i = 0; i < numControlPoints; ++i)
     {
-      p1 = spline.points[i];
-      p2 = spline.points[i + 1];
-      p3 = spline.points[i + 2];
-      p4 = spline.points[i + 3];
+      p1 = points[i];
+      p2 = points[(i + 1) % numControlPoints];
+      p3 = points[(i + 2) % numControlPoints];
+      p4 = points[(i + 3) % numControlPoints];
 
       control = glm::mat3x4(
           p1.x, p2.x, p3.x, p4.x,
@@ -982,7 +1019,7 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
   {
     frenet.binormal = f.back().binormal;
     frenet.normal = f.back().normal;
-    calculate_fernet(frenet);
+    calculate_frenet(frenet);
   }
 
   // cout << "binormal: " << glm::to_string(frenet.binormal) << " normal: " << glm::to_string(frenet.normal) << '\n';
@@ -993,7 +1030,7 @@ void generate_point(struct Pos &coords, vector<float> &position, vector<float> &
 void generate_cross_section_vector(vector<struct Frenet> &f, vector<float> &position)
 {
 
-  float a = 0.1f;
+  float a = 0.05f;
 
   Frenet &frenet = f.back();
   glm::vec3 &p = frenet.point;
@@ -1029,7 +1066,7 @@ void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d,
   push_glm_to_vector(d, vec);
 }
 
-void generate_cross_section(vector<float> vecs)
+void generate_cross_section(vector<float> &vecs)
 {
   vector<int> cross_section_right_index, cross_section_up_index, cross_section_left_index, cross_section_down_index;
   int i = 0, num_vertices = vertices.size() / 3;
@@ -1224,7 +1261,7 @@ void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m)
   }
 }
 
-void calculate_fernet(Frenet &f)
+void calculate_frenet(Frenet &f)
 {
   glm::vec3 n = glm::normalize(glm::cross(f.binormal, f.tangent));
   f.normal = n;
