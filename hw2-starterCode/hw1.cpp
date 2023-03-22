@@ -728,15 +728,6 @@ void get_vertices()
       points.push_back(point);
     }
 
-    // p.x = (spline.points[0].x + spline.points[numControlPoints - 2].x) / 2;
-    // p.y = (spline.points[0].y + spline.points[numControlPoints - 2].y) / 2;
-    // p.z = (spline.points[0].z + spline.points[numControlPoints - 2].z) / 2;
-    // point.x = p.x;
-    // point.y = p.y;
-    // point.z = p.z;
-    // points.push_back(point);
-    // numControlPoints += 1;
-
     for (int i = 0; i < numControlPoints; ++i)
     {
       p1 = points[i];
