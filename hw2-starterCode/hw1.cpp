@@ -343,9 +343,9 @@ void displayFunc()
   matrix.LoadIdentity();
 
   // eye_z is based on the input image dimension
-  matrix.LookAt(5.0, 10.0, 15.0,
-                0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0);
+  // matrix.LookAt(5.0, 10.0, 15.0,
+  //               0.0, 0.0, 0.0,
+  //               0.0, 1.0, 0.0);
 
   int index = counter % frenets.size();
   Frenet frenet = frenets[index];
@@ -354,9 +354,9 @@ void displayFunc()
   glm::vec3 focus = eyes + frenet.tangent;
   glm::vec3 up = frenet.normal;
 
-  // matrix.LookAt(eyes.x, eyes.y, eyes.z,
-  //               focus.x, focus.y, focus.z,
-  //               up.x, up.y, up.z);
+  matrix.LookAt(eyes.x, eyes.y, eyes.z,
+                focus.x, focus.y, focus.z,
+                up.x, up.y, up.z);
 
 
   // bind shader
@@ -570,6 +570,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 
     // move backward
     counter -= speed_step * 10;
+    if (counter < 0) counter = 0;
     break;
 
   case '1':
