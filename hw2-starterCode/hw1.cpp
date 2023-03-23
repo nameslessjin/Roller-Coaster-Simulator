@@ -60,7 +60,7 @@ struct Frenet
 };
 vector<Frenet> frenets;
 
-struct Cross_Section {
+struct Cross_Section_Vertex {
   vector<float> cross_section_vertices;
   vector<float> cross_section_left, cross_section_left_color;
   vector<float> cross_section_right, cross_section_right_color;
@@ -76,12 +76,23 @@ struct Cross_Section_Buffer
   GLuint vao_cross_section_down, ebo_cross_section_down;
 };
 
+struct Cross_Section {
+
+  Cross_Section_Vertex csv;
+  Cross_Section_Buffer csb;
+
+  // T shape
+  Cross_Section_Vertex csv_t;
+  Cross_Section_Buffer csb_t;
+};
+
 // fill positions and color array
 void get_vertices();
 void fill_lines(GLuint &ebo);
 void generate_point(Pos &coords, vector<float> &position, vector<float> &color, vector<Frenet> &f);
-void generate_cross_section_vector(vector<Frenet> &f, Cross_Section &csv, Cross_Section &csv_t);
-void generate_cross_section(Cross_Section &csv, Cross_Section_Buffer &buffer);
+void generate_cross_section_vector(vector<Frenet> &f, Cross_Section &cs, float shift);
+void generate_cross_section(Cross_Section &cs);
+void generate_cross_section_single(Cross_Section_Vertex &cs, Cross_Section_Buffer &buffer);
 void do_vertex(Pos &coords);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
@@ -92,7 +103,8 @@ void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d,
 void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &color);
 void push_cross_section_index(vector<int> &indexes, int i);
 void render_normal_binormal();
-void render_cross_section(Cross_Section_Buffer &buffer);
+void render_cross_section(Cross_Section &cs);
+void render_cross_section_single(Cross_Section_Buffer &buffer);
 
 // set up vbo and vao
 void set_one_vbo_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
@@ -153,16 +165,10 @@ GLuint vao_vertices, vao_normal, vao_binormal;
 // lines
 GLuint ebo_line;
 
-
-// rail cross section
-Cross_Section csv;
-Cross_Section_Buffer csb;
-
-// T shape
-Cross_Section csv_t;
-Cross_Section_Buffer csb_t;
-
+// Cross section
+Cross_Section cs_l, cs_r;
 int cross_section_side_size = 0;
+float cross_section_separation = 3.0f;
 
 // groud
 GLuint vao_ground, ebo_ground, texture_ground;
@@ -389,9 +395,9 @@ void displayFunc()
 
   set_matrix(pipelineProgram);
 
-  glBindVertexArray(vao_vertices);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
-  glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
+  // glBindVertexArray(vao_vertices);
+  // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_line);
+  // glDrawElements(GL_LINES, frenets.size() * 2, GL_UNSIGNED_INT, 0);
 
   // draw normal and binormal
   // glBindVertexArray(vao_normal);
@@ -399,8 +405,8 @@ void displayFunc()
   // glBindVertexArray(vao_binormal);
   // glDrawArrays(GL_LINES, 0, frenets.size() * 2);
 
-  render_cross_section(csb);
-  render_cross_section(csb_t);
+  render_cross_section(cs_r);
+  render_cross_section(cs_l);
 
   // draw ground
   texturePipelineProgram->Bind();
@@ -707,7 +713,12 @@ int main(int argc, char **argv)
   glutMainLoop();
 }
 
-void render_cross_section(Cross_Section_Buffer &buffer) {
+void render_cross_section(Cross_Section &cs) {
+  render_cross_section_single(cs.csb);
+  render_cross_section_single(cs.csb_t);
+}
+
+void render_cross_section_single(Cross_Section_Buffer &buffer) {
 
   glBindVertexArray(buffer.vao_cross_section_right);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.ebo_cross_section_right);
@@ -782,8 +793,8 @@ void get_vertices()
 
   set_one_vbo_one_vao_basic(pipelineProgram, vertices, vertex_colors, vao_vertices);
 
-  generate_cross_section(csv, csb);
-  generate_cross_section(csv_t, csb_t);
+  generate_cross_section(cs_r);
+  generate_cross_section(cs_l);
 
   // cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << '\n';
 }
@@ -996,7 +1007,8 @@ void set_one_vbo_one_vao_texture(BasicPipelineProgram *pipeline, vector<float> &
 void do_vertex(Pos &coords)
 {
   generate_point(coords, vertices, vertex_colors, frenets);
-  generate_cross_section_vector(frenets, csv, csv_t);
+  generate_cross_section_vector(frenets, cs_r, cross_section_separation);
+  generate_cross_section_vector(frenets, cs_l, -cross_section_separation);
   
 }
 
@@ -1044,28 +1056,29 @@ void generate_point(Pos &coords, vector<float> &position, vector<float> &color, 
   f.push_back(frenet);
 }
 
-void generate_cross_section_vector(vector<Frenet> &f, Cross_Section &cs, Cross_Section &cs_t)
+void generate_cross_section_vector(vector<Frenet> &f, Cross_Section &cs, float shift)
 {
 
-  float a = 0.05f, a_t = 0.02f;
+  float a = 0.03f;
 
-  vector<float> &position = cs.cross_section_vertices;
-  vector<float> &position_t = cs_t.cross_section_vertices;
+  vector<float> &position = cs.csv.cross_section_vertices;
+  vector<float> &position_t = cs.csv_t.cross_section_vertices;
 
   Frenet &frenet = f.back();
   glm::vec3 &p = frenet.point;
   glm::vec3 &n = frenet.normal;
   glm::vec3 &b = frenet.binormal;
+  glm::vec3 b_shit = b * shift;
 
-  glm::vec3 v0 = p + a * (n * -1.0f + b);
-  glm::vec3 v1 = p + a * (n + b);
-  glm::vec3 v2 = p + a * (n + b * -1.0f);
-  glm::vec3 v3 = p + a * (n * -1.0f + b * -1.0f);
+  glm::vec3 v0 = p + a * (n * -1.0f + b + b_shit);
+  glm::vec3 v1 = p + a * (n + b + b_shit);
+  glm::vec3 v2 = p + a * (n + b * -1.0f + b_shit);
+  glm::vec3 v3 = p + a * (n * -1.0f + b * -1.0f + b_shit);
 
-  glm::vec3 v0_t = p + a * (n * -3.0f + b);
-  glm::vec3 v1_t = p + a * (n * 3.0f + b);
-  glm::vec3 v2_t = p + a * (n * 3.0f + b * 0.5f);
-  glm::vec3 v3_t = p + a * (n * -3.0f + b * 0.5f);
+  glm::vec3 v0_t = p + a * (n * -3.0f + b + b_shit);
+  glm::vec3 v1_t = p + a * (n * 3.0f + b + b_shit);
+  glm::vec3 v2_t = p + a * (n * 3.0f + b * 0.5f + b_shit);
+  glm::vec3 v3_t = p + a * (n * -3.0f + b * 0.5f + b_shit);
 
   push_glm_to_vector(v0, position);
   push_glm_to_vector(v1, position);
@@ -1096,7 +1109,12 @@ void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d,
   push_glm_to_vector(d, vec);
 }
 
-void generate_cross_section(Cross_Section &cs, Cross_Section_Buffer &buffer)
+void generate_cross_section(Cross_Section &cs) {
+  generate_cross_section_single(cs.csv, cs.csb);
+  generate_cross_section_single(cs.csv_t, cs.csb_t);
+}
+
+void generate_cross_section_single(Cross_Section_Vertex &cs, Cross_Section_Buffer &buffer)
 {
 
   vector<int> cross_section_right_index, cross_section_up_index, cross_section_left_index, cross_section_down_index;

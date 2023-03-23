@@ -32,7 +32,12 @@ spacebar: start/pause
 ## Extra Creidts
 1. Render a T-shaped rail cross-section.  The head of T is on the right side of the rail.  I made it big so it is more visible.
 <br><br>
-2. The spline drawn through this program uses recursive subdivision (vary step size to draw short lines) instead of using brute force (vary u with fixed step size)<br><br>
-3. Track is circular and close with C1 continuity.  To see a good example of this condition, you can check circle.sp and star.sp.  Even if the u step is large size,
+
+2. Render double rail side by side
+<br><br>
+
+3. The spline drawn through this program uses recursive subdivision (vary step size to draw short lines) instead of using brute force (vary u with fixed step size)<br><br>
+
+4. Track is circular and close with C1 continuity.  To see a good example of this condition, you can check circle.sp and star.sp.  Even if the u step is large size,
 the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files
 <br><br>
