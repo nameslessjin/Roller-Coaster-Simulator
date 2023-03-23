@@ -825,9 +825,9 @@ void fill_ground() {
 
   vector<float> grounds, colors, texCoord;
   vector<int> indexes;
-  float c = 0.0f;
+  float c = 0.0f, repeat = 50.0f;
 
-  float l = 1000.0f;
+  float l = 500.0f;
   float h = -10.0f;
 
   // 0 | 1, 1
@@ -840,10 +840,10 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
-  texCoord.push_back(1.0f);
-  texCoord.push_back(1.0f);
+  texCoord.push_back(1.0f * repeat);
+  texCoord.push_back(1.0f * repeat);
 
-  // 1 | -1, 1
+  // 1 | 0, 1
   grounds.push_back(-l);
   grounds.push_back(l);
   grounds.push_back(h);
@@ -853,10 +853,10 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
-  texCoord.push_back(-1.0f);
-  texCoord.push_back(1.0f);
+  texCoord.push_back(0.0f);
+  texCoord.push_back(1.0f * repeat);
 
-  // 2 | 1, 1
+  // 2 | 1, 0
   grounds.push_back(l);
   grounds.push_back(-l);
   grounds.push_back(h);
@@ -866,10 +866,10 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
-  texCoord.push_back(1.0f);
-  texCoord.push_back(-1.0f);
+  texCoord.push_back(1.0f * repeat);
+  texCoord.push_back(0.0f);
 
-  // 3 | -1, -1
+  // 3 | 0, 0
   grounds.push_back(-l);
   grounds.push_back(-l);
   grounds.push_back(h);
@@ -879,8 +879,8 @@ void fill_ground() {
   colors.push_back(c);
   colors.push_back(alpha);
 
-  texCoord.push_back(-1.0f);
-  texCoord.push_back(-1.0f);
+  texCoord.push_back(0.0f);
+  texCoord.push_back(0.0f);
 
   set_one_vbo_one_vao_texture(texturePipelineProgram, grounds, colors, texCoord, vao_ground);
 
