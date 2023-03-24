@@ -42,7 +42,7 @@ using namespace std;
 
 const char image_file[1024] = "Waterpl.jpg";
 
-// forward declaration
+// Forward declaration
 // Coordinates and tangents for each position
 struct Pos
 {
@@ -59,7 +59,9 @@ struct Frenet
   glm::vec3 normal;
 };
 vector<Frenet> frenets;
+vector<Frenet> frenets_v;
 
+// Cross Section structs
 struct Cross_Section_Vertex {
   vector<float> cross_section_vertices;
   vector<float> cross_section_left, cross_section_left_color;
@@ -93,9 +95,8 @@ void generate_point(Pos &coords, vector<float> &position, vector<float> &color, 
 void generate_cross_section_vector(vector<Frenet> &f, Cross_Section &cs, float shift);
 void generate_cross_section(Cross_Section &cs);
 void generate_cross_section_single(Cross_Section_Vertex &cs, Cross_Section_Buffer &buffer);
-void do_vertex(Pos &coords);
+void do_vertex(Pos &coords, vector<float> &vs, vector<float> &vc, vector<Frenet> &f);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
-glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3);
 glm::vec3 find_point(vector<float> &position, int index);
 void push_glm_to_color(glm::vec3 &n, vector<float> &color);
 void fill_ground();
@@ -105,6 +106,7 @@ void push_cross_section_index(vector<int> &indexes, int i);
 void render_normal_binormal();
 void render_cross_section(Cross_Section &cs);
 void render_cross_section_single(Cross_Section_Buffer &buffer);
+void calculate_physical_velocity();
 
 // set up vbo and vao
 void set_one_vbo_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
@@ -127,11 +129,13 @@ int leftMouseButton = 0;   // 1 if pressed, 0 if not
 int middleMouseButton = 0; // 1 if pressed, 0 if not
 int rightMouseButton = 0;  // 1 if pressed, 0 if not
 
-int speed_coe = 100;
-float max_line_length = 0.1 / speed_coe;
-float time_step = 0.01;
-int default_speed_step = 100;
-int speed_step = 1 * speed_coe;
+// speed and velocity control stats
+int speed_coe = 1;
+float max_line_length = 0.001;
+float time_step = 0.0001f / speed_coe;
+int default_speed_step = speed_coe * 10;
+int speed_step = default_speed_step;
+float gravity = 59.8f;
 
 // Transformation mode
 typedef enum
@@ -159,8 +163,9 @@ float alpha = 1.0f;
 char windowTitle[512] = "CSCI 420 homework II";
 
 // vertices
-vector<float> vertices, vertex_colors;
+vector<float> vertices, vertex_colors, velocity;
 GLuint vao_vertices, vao_normal, vao_binormal;
+float max_height = INT_MIN * 1.0f;
 
 // lines
 GLuint ebo_line;
@@ -370,8 +375,10 @@ void displayFunc()
   //               0.0, 0.0, 0.0,
   //               0.0, 1.0, 0.0);
 
-  int index = counter % frenets.size();
-  Frenet frenet = frenets[index];
+  // cout << "f: " << frenets.size() << '\n';
+  // cout << "fv: " << frenets_v.size() << '\n';
+  int index = counter % frenets_v.size();
+  Frenet frenet = frenets_v[index];
 
   glm::vec3 eyes = frenet.point + frenet.normal * 0.5f;
   glm::vec3 focus = eyes + frenet.tangent;
@@ -380,7 +387,6 @@ void displayFunc()
   matrix.LookAt(eyes.x, eyes.y, eyes.z,
                 focus.x, focus.y, focus.z,
                 up.x, up.y, up.z);
-
 
   // bind shader
   pipelineProgram->Bind();
@@ -574,12 +580,12 @@ void keyboardFunc(unsigned char key, int x, int y)
   case '.':
 
     // fast forward
-    counter += speed_step * 10;
+    counter += default_speed_step * 10;
     break;
   case ',':
 
     // move backward
-    counter -= speed_step * 10;
+    counter -= default_speed_step * 10;
     if (counter < 0) counter = 0;
     break;
 
@@ -628,6 +634,7 @@ void initScene(int argc, char *argv[])
     abort();
 
   get_vertices();
+  calculate_physical_velocity();
   fill_lines(ebo_line);
   fill_ground();
   render_normal_binormal();
@@ -744,7 +751,7 @@ void get_vertices()
 
   // 3 columns, 4 rows
   glm::mat3x4 control, m;
-  glm::vec3 position, init_pos, point, p1, p2, p3, p4;
+  glm::vec3 position, point, p1, p2, p3, p4;
   vector<glm::vec3> points;
   Point p;
 
@@ -777,26 +784,75 @@ void get_vertices()
 
       m = basis * control;
 
-      // while (u <= 1.0) {
-
-      //   Pos position = catmull_rom(u, m);
-
-      //   do_vertex(position);
-      //   u += time_step;
-      // }
-
-      // u = 0.0f;
-
       subdivide(0, 1, max_line_length, m);
     }
   }
 
   set_one_vbo_one_vao_basic(pipelineProgram, vertices, vertex_colors, vao_vertices);
-
   generate_cross_section(cs_r);
   generate_cross_section(cs_l);
 
   // cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << '\n';
+}
+
+void calculate_physical_velocity()
+{
+  velocity.clear();
+
+  // 3 columns, 4 rows
+  glm::mat3x4 control, m;
+  glm::vec3 position, point, p1, p2, p3, p4;
+  vector<glm::vec3> points;
+  vector<float> vc;
+  Point p;
+  int count = 100, j = 10;
+
+  for (int s = 0; s < numSplines; ++s)
+  {
+
+    Spline spline = splines[s];
+    float u = 0.0f, default_speed = 0.0005f;
+    int numControlPoints = spline.numControlPoints;
+
+    for (int i = 0; i < numControlPoints; ++i) {
+      p = spline.points[i];
+      point.x = p.x;
+      point.y = p.y;
+      point.z = p.z;
+      points.push_back(point);
+    }
+
+    for (int i = 0; i < numControlPoints; ++i)
+    {
+      p1 = points[i];
+      p2 = points[(i + 1) % numControlPoints];
+      p3 = points[(i + 2) % numControlPoints];
+      p4 = points[(i + 3) % numControlPoints];
+
+      control = glm::mat3x4(
+          p1.x, p2.x, p3.x, p4.x,
+          p1.y, p2.y, p3.y, p4.y,
+          p1.z, p2.z, p3.z, p4.z);
+
+      m = basis * control;
+
+      while (u <= 1.0) {
+
+        Pos position = catmull_rom(u, m);
+
+        glm::vec3 ground = glm::vec3(position.position.x, position.position.y, -10.0f);
+        float height = glm::length(position.position - ground);
+
+        u += time_step * sqrt(2 * gravity * (max_height - height)) / glm::length(position.position_tan) + default_speed;
+
+        do_vertex(position, velocity, vc, frenets_v);
+
+      }
+
+      u = 0.0f;
+
+    }
+  }
 }
 
 /* Generate points for line mode */
@@ -902,7 +958,7 @@ struct Pos catmull_rom(float u, glm::mat3x4 &m)
   glm::vec4 us = glm::vec4(powf(u, 3.0f), powf(u, 2.0f), u, 1);
   glm::vec4 us_tan = glm::vec4(3 * powf(u, 2.0f), 2 * u, 1, 0);
   glm::vec3 position = us * m;
-  glm::vec3 position_tan = glm::normalize(us_tan * m);
+  glm::vec3 position_tan = us_tan * m;
 
   Pos pos = {position, position_tan};
 
@@ -1004,11 +1060,11 @@ void set_one_vbo_one_vao_texture(BasicPipelineProgram *pipeline, vector<float> &
   glBindVertexArray(0);
 }
 
-void do_vertex(Pos &coords)
+void do_vertex(Pos &coords, vector<float> &vs, vector<float> &vc, vector<Frenet> &f)
 {
-  generate_point(coords, vertices, vertex_colors, frenets);
-  generate_cross_section_vector(frenets, cs_r, cross_section_separation);
-  generate_cross_section_vector(frenets, cs_l, -cross_section_separation);
+  generate_point(coords, vs, vc, f);
+  generate_cross_section_vector(f, cs_r, cross_section_separation);
+  generate_cross_section_vector(f, cs_l, -cross_section_separation);
   
 }
 
@@ -1019,6 +1075,7 @@ void generate_point(Pos &coords, vector<float> &position, vector<float> &color, 
   float c = 1.0f;
   glm::vec3 p = coords.position;
   glm::vec3 t = coords.position_tan;
+  glm::vec3 ground = glm::vec3(p.x, p.y, -10.0f);
 
   // assign positions and colors
   position.push_back(p.x);
@@ -1032,7 +1089,8 @@ void generate_point(Pos &coords, vector<float> &position, vector<float> &color, 
   Frenet frenet;
 
   frenet.point = p;
-  frenet.tangent = t;
+  frenet.tangent = glm::normalize(t);
+  max_height = max(max_height, glm::length(p - ground));
 
   if (f.size() == 0)
   {
@@ -1046,8 +1104,9 @@ void generate_point(Pos &coords, vector<float> &position, vector<float> &color, 
   }
   else
   {
-    frenet.binormal = f.back().binormal;
-    frenet.normal = f.back().normal;
+    Frenet &prev = f.back();
+    frenet.binormal = prev.binormal;
+    frenet.normal = prev.normal;
     calculate_frenet(frenet);
   }
 
@@ -1215,16 +1274,6 @@ glm::vec3 find_point(vector<float> &position, int index) {
   return glm::vec3(position[index], position[index + 1], position[index + 2]);
 }
 
-glm::vec3 find_triangle_normal(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3)
-{
-
-  glm::vec3 v1 = p2 - p1;
-  glm::vec3 v2 = p3 - p2;
-
-  glm::vec3 normal = glm::normalize(glm::cross(v1, v2));
-
-  return normal;
-}
 
 void set_matrix(BasicPipelineProgram *pipeline)
 {
@@ -1307,7 +1356,7 @@ void subdivide(float u0, float u1, float max_line_length, glm::mat3x4 &m)
   }
   else
   {
-    do_vertex(x0);
+    do_vertex(x0, vertices, vertex_colors, frenets);
   }
 }
 

@@ -41,3 +41,6 @@ spacebar: start/pause
 4. Track is circular and close with C1 continuity.  To see a good example of this condition, you can check circle.sp and star.sp.  Even if the u step is large size,
 the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files
 <br><br>
+
+5. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.
+<br><br>
