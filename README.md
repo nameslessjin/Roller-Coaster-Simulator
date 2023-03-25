@@ -42,5 +42,11 @@ spacebar: start/pause
 the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files
 <br><br>
 
-5. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.
+5. Render a sky box.  It is texture-mapped.  The entire scene is enclosed into a cube.
 <br><br>
+
+<!-- 6. Draw additional scene elements:  -->
+
+6. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.
+<br><br>
+
