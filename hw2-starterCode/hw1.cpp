@@ -460,6 +460,8 @@ void displayFunc()
   render_cross_section(cs_r);
   render_cross_section(cs_l);
   render_cross_section_single(cs_bar.csb, cs_bar.cross_section_side_size);
+
+  // cout << "cs_support: " << cs_support.csv.cross_section_vertices.size() << '\n';
   // render_cross_section_single(cs_support.csb, cs_support.cross_section_side_size);
 
   // draw environments
@@ -924,14 +926,16 @@ void get_vertices()
     generate_cross_section_vector(frenets[i], cs_bar, 0.0f, b_multiplier, false);
     generate_cross_section_vector(frenets[(i+50) % frenets.size()], cs_bar, 0.0f, b_multiplier, false);
 
-    // if (i % 6400 == 0) {
-    //   generate_cross_section_vector(frenets[i], cs_support, 0.0f, b_multiplier, true);
-    //   generate_cross_section_vector(frenets[(i+50) % frenets.size()], cs_support, -cross_section_separation, b_multiplier, true);
-    // }
+    if (i % 6400 == 0) {
+      b_multiplier = 0.5f;
+      float shift = -1.25f * cross_section_separation;
+      generate_cross_section_vector(frenets[i], cs_support, shift, b_multiplier, true);
+      generate_cross_section_vector(frenets[(i+50) % frenets.size()], cs_support, shift, b_multiplier, true);
+    }
   }
 
   cs_bar.cross_section_side_size = generate_cross_section_single(cs_bar.csv, cs_bar.csb, X, 2);
-  // cs_support.cross_section_side_size = generate_cross_section_single(cs_support.csv, cs_support.csb, Z, 2);
+  cs_support.cross_section_side_size = generate_cross_section_single(cs_support.csv, cs_support.csb, Z, 2);
 
   // cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << '\n';
 }
