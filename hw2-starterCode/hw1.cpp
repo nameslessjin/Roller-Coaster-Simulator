@@ -42,6 +42,7 @@ using namespace std;
 
 const char ground_image_file[1024] = "Waterpl.jpg";
 const char sky_image_file[1024] = "Natur17l.jpg";
+const char ambrosia_image_file[1024] = "Ambrosia.jpg";
 
 // Forward declaration
 // Coordinates and tangents for each position
@@ -150,11 +151,12 @@ void render_environment(BasicPipelineProgram *pipeline, Environment &e);
 void generate_environment(Environment &e);
 void push_side(glm::vec3 &p0, glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3, glm::vec3 &dir, int i, Vertex_Color &cv, vector<int> &csi);
 void render_elements(VAO_VBO &v, int size);
-void generate_cross_section_texture(Cross_Section &cs);
+void generate_cross_section_texture(Cross_Section &cs, string filename);
 void fill_texCoords(vector<float> &texCoords, float repeat);
+void init_cross_section_texture(Cross_Section &cs, string filename);
 
 // set up vbo and vao
-void set_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
+void set_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, vector<float> &texCoord, GLuint &vao);
 void set_vao_texture(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, vector<float> &texCoord, GLuint &vao);
 void set_ebo(vector<int> &indexes, GLuint &ebo);
 
@@ -470,16 +472,6 @@ void displayFunc()
   // draw environments
   render_environment(texturePipelineProgram, env);
 
-  glBindTexture(GL_TEXTURE_2D, env.ground.texture);
-  glBindVertexArray(env.ground.vao);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, env.ground.ebo);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-  glBindTexture(GL_TEXTURE_2D, env.sky.texture);
-  glBindVertexArray(env.sky.vao);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, env.sky.ebo);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
@@ -728,11 +720,11 @@ void initScene(int argc, char *argv[])
   if (ret != 0)
     abort();
 
-  generate_cross_section_texture(cs_l);
-  generate_cross_section_texture(cs_r);
-  generate_cross_section_texture(cs_bar);
-  generate_cross_section_texture(cs_support);
-
+  generate_cross_section_texture(cs_l, ambrosia_image_file);
+  generate_cross_section_texture(cs_r, ambrosia_image_file);
+  generate_cross_section_texture(cs_bar, ambrosia_image_file);
+  generate_cross_section_texture(cs_support, ambrosia_image_file);
+  
   get_vertices();
   calculate_physical_velocity();
   fill_lines(ebo_line);
@@ -833,6 +825,21 @@ int main(int argc, char **argv)
   glutMainLoop();
 }
 
+void init_cross_section_texture(Cross_Section &cs, string filename) {
+  Cross_Section_Buffer &csb = cs.csb;
+  Cross_Section_Buffer &csb_t = cs.csb_t;
+
+  initTexture(filename.c_str(), csb.left.texture);
+  initTexture(filename.c_str(), csb.right.texture);
+  initTexture(filename.c_str(), csb.up.texture);
+  initTexture(filename.c_str(), csb.down.texture);
+
+  initTexture(filename.c_str(), csb_t.left.texture);
+  initTexture(filename.c_str(), csb_t.right.texture);
+  initTexture(filename.c_str(), csb_t.up.texture);
+  initTexture(filename.c_str(), csb_t.down.texture);
+}
+
 void generate_environment(Environment &e) {
 
   // 1, 1 | -1, 1 | 1, -1 | -1, -1
@@ -860,7 +867,7 @@ void generate_environment_texture(Environment &e) {
   glGenTextures(1, &e.right.texture);
 }
 
-void generate_cross_section_texture(Cross_Section &cs) {
+void generate_cross_section_texture(Cross_Section &cs, string filename) {
 
   Cross_Section_Buffer &csb = cs.csb;
   Cross_Section_Buffer &csb_t = cs.csb_t;
@@ -873,6 +880,8 @@ void generate_cross_section_texture(Cross_Section &cs) {
   glGenTextures(1, &csb_t.right.texture);
   glGenTextures(1, &csb_t.up.texture);
   glGenTextures(1, &csb_t.down.texture);
+
+  init_cross_section_texture(cs, filename);
 }
 
 void render_cross_section(Cross_Section &cs) {
@@ -890,6 +899,7 @@ void render_cross_section_single(Cross_Section_Buffer &buffer, int size) {
 }
 
 void render_elements(VAO_VBO &v, int size) {
+  glBindTexture(GL_TEXTURE_2D, v.texture);
   glBindVertexArray(v.vao);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, v.ebo);
   glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, 0);
@@ -939,7 +949,7 @@ void get_vertices()
     }
   }
 
-  set_one_vao_basic(pipelineProgram, vertices, vertex_colors, vao_vertices);
+  // set_one_vao_basic(pipelineProgram, vertices, vertex_colors, vao_vertices);
   generate_cross_section(cs_r);
   generate_cross_section(cs_l);
 
@@ -1115,20 +1125,22 @@ void set_ebo(vector<int> &indexes, GLuint &ebo)
 }
 
 /* set up a generic vbo and vao */
-void set_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao)
+void set_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, vector<float> &texCoord, GLuint &vao)
 {
   // Set up vertices and color in buffer
   int size = sizeof(float) * position.size();
   int color_size = sizeof(float) * color.size();
+  int tex_size = sizeof(float) * texCoord.size();
   uintptr_t offset = 0;
 
   // bind vertices and colors with vbo
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, size + color_size, NULL, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, size + color_size + tex_size, NULL, GL_STATIC_DRAW);
   glBufferSubData(GL_ARRAY_BUFFER, 0, size, position.data());
   glBufferSubData(GL_ARRAY_BUFFER, size, color_size, color.data());
+  glBufferSubData(GL_ARRAY_BUFFER, size + color_size, tex_size, texCoord.data());
 
   // set up vao
   glGenVertexArrays(1, &vao);
@@ -1146,6 +1158,11 @@ void set_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, 
   loc = glGetAttribLocation(pipeline->GetProgramHandle(), "normal");
   glEnableVertexAttribArray(loc);
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
+
+  offset += color_size;
+  loc = glGetAttribLocation(pipeline->GetProgramHandle(), "texCoord");
+  glEnableVertexAttribArray(loc);
+  glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, 0, (const void *)offset);
 
   // unbind vbo and vao
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1392,10 +1409,10 @@ int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffe
     }
   }
 
-  set_one_vao_basic(pipelineProgram, csv.right.vertex, csv.right.color, buffer.right.vao);
-  set_one_vao_basic(pipelineProgram, csv.up.vertex, csv.up.color, buffer.up.vao);
-  set_one_vao_basic(pipelineProgram, csv.left.vertex, csv.left.color, buffer.left.vao);
-  set_one_vao_basic(pipelineProgram, csv.down.vertex, csv.down.color, buffer.down.vao);
+  set_one_vao_basic(pipelineProgram, csv.right.vertex, csv.right.color, csv.right.texCoords, buffer.right.vao);
+  set_one_vao_basic(pipelineProgram, csv.up.vertex, csv.up.color, csv.up.texCoords, buffer.up.vao);
+  set_one_vao_basic(pipelineProgram, csv.left.vertex, csv.left.color, csv.left.texCoords, buffer.left.vao);
+  set_one_vao_basic(pipelineProgram, csv.down.vertex, csv.down.color, csv.down.texCoords, buffer.down.vao);
 
   set_ebo(cross_section_right_index, buffer.right.ebo);
   set_ebo(cross_section_up_index, buffer.up.ebo);
@@ -1573,8 +1590,8 @@ void render_normal_binormal() {
     // << " binormal: " << glm::length(f.binormal) << '\n';
     
   }
-  set_one_vao_basic(pipelineProgram, normals, nc, vao_normal);
-  set_one_vao_basic(pipelineProgram, binormals, bc, vao_binormal);
+  // set_one_vao_basic(pipelineProgram, normals, nc, vao_normal);
+  // set_one_vao_basic(pipelineProgram, binormals, bc, vao_binormal);
 }
 
 void print_frenet(int index) {

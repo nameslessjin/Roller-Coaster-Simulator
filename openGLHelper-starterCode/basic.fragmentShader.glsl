@@ -3,9 +3,11 @@
 // interpolated from vertex program outpus
 in vec3 viewPosition;
 in vec3 viewNormal;
+in vec2 TexCoord;
 
 // output color
 out vec4 c;
+uniform sampler2D textureSampler;
 
 // Phong Lighting, properties of the directional light
 uniform vec4 La; // light ambient
@@ -34,5 +36,7 @@ void main()
   float s = max(dot(reflectDir, eyedir), 0.0f);
 
   // compute the final color
-  c = ka * La + d * kd * Ld + pow(s, alpha) * ks * Ls;
+  vec4 light = ka * La + d * kd * Ld + pow(s, alpha) * ks * Ls;
+  vec4 t = texture(textureSampler, TexCoord);
+  c = light + t;
 }

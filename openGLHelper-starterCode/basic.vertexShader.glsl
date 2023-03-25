@@ -3,10 +3,12 @@
 // vertex position and normal in world-space
 in vec3 position;
 in vec3 normal;
+in vec2 texCoord;
 
 // vertex position and normal in view space, passed to fragment shader
 out vec3 viewPosition;
 out vec3 viewNormal;
+out vec2 TexCoord;
 
 // transformation matrix
 uniform mat4 normalMatrix;
@@ -27,5 +29,7 @@ void main()
   // view-space normal
   viewNormal = normalize((normalMatrix * vec4(normal, 0.0f)).xyz);
   color = normal;
+
+  TexCoord = texCoord;
 }
 
