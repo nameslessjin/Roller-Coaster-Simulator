@@ -66,10 +66,11 @@ vector<Frenet> frenets_v;
 struct Vertex_Color {
   vector<float> vertex;
   vector<float> color;
+  vector<float> texCoords;
 };
 
 struct VAO_VBO {
-  GLuint vao, ebo;
+  GLuint vao, ebo, texture;
 };
 
 // Cross Section structs
@@ -147,9 +148,10 @@ void push_glm_to_color_texture(glm::vec4 &n, vector<float> &color);
 void generate_environment_texture(Environment &e);
 void render_environment(BasicPipelineProgram *pipeline, Environment &e);
 void generate_environment(Environment &e);
-int generate_cross_section_horizontal(Cross_Section_Vertex &csv, Cross_Section_Buffer &buffer);
 void push_side(glm::vec3 &p0, glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3, glm::vec3 &dir, int i, Vertex_Color &cv, vector<int> &csi);
 void render_elements(VAO_VBO &v, int size);
+void generate_cross_section_texture(Cross_Section &cs);
+void fill_texCoords(vector<float> &texCoords, float repeat);
 
 // set up vbo and vao
 void set_one_vao_basic(BasicPipelineProgram *pipeline, vector<float> &position, vector<float> &color, GLuint &vao);
@@ -726,6 +728,10 @@ void initScene(int argc, char *argv[])
   if (ret != 0)
     abort();
 
+  generate_cross_section_texture(cs_l);
+  generate_cross_section_texture(cs_r);
+  generate_cross_section_texture(cs_bar);
+  generate_cross_section_texture(cs_support);
 
   get_vertices();
   calculate_physical_velocity();
@@ -736,9 +742,17 @@ void initScene(int argc, char *argv[])
   float sd = l;
   float sh = l / 2;
 
-  generate_environment(env);
-
   render_normal_binormal();
+
+  generate_environment(env);
+  generate_environment_texture(env);
+  initTexture(sky_image_file, env.sky.texture);
+  initTexture(sky_image_file, env.left.texture);
+  initTexture(sky_image_file, env.right.texture);
+  initTexture(sky_image_file, env.front.texture);
+  initTexture(sky_image_file, env.back.texture);
+  initTexture(ground_image_file, env.ground.texture);
+
 
   glEnable(GL_DEPTH_TEST);
 
@@ -815,14 +829,6 @@ int main(int argc, char **argv)
   // do initialization
   initScene(argc, argv);
 
-  generate_environment_texture(env);
-  initTexture(sky_image_file, env.sky.texture);
-  initTexture(sky_image_file, env.left.texture);
-  initTexture(sky_image_file, env.right.texture);
-  initTexture(sky_image_file, env.front.texture);
-  initTexture(sky_image_file, env.back.texture);
-  initTexture(ground_image_file, env.ground.texture);
-
   // sink forever into the glut loop
   glutMainLoop();
 }
@@ -852,6 +858,21 @@ void generate_environment_texture(Environment &e) {
   glGenTextures(1, &e.back.texture);
   glGenTextures(1, &e.left.texture);
   glGenTextures(1, &e.right.texture);
+}
+
+void generate_cross_section_texture(Cross_Section &cs) {
+
+  Cross_Section_Buffer &csb = cs.csb;
+  Cross_Section_Buffer &csb_t = cs.csb_t;
+
+  glGenTextures(1, &csb.left.texture);
+  glGenTextures(1, &csb.right.texture);
+  glGenTextures(1, &csb.up.texture);
+  glGenTextures(1, &csb.down.texture);
+  glGenTextures(1, &csb_t.left.texture);
+  glGenTextures(1, &csb_t.right.texture);
+  glGenTextures(1, &csb_t.up.texture);
+  glGenTextures(1, &csb_t.down.texture);
 }
 
 void render_cross_section(Cross_Section &cs) {
@@ -1023,9 +1044,20 @@ void fill_lines(GLuint &ebo)
   set_ebo(lines, ebo);
 }
 
+void fill_texCoords(vector<float> &texCoords, float repeat) {
+  texCoords.push_back(1.0f * repeat);
+  texCoords.push_back(1.0f * repeat);
+  texCoords.push_back(0.0f);
+  texCoords.push_back(1.0f * repeat);
+  texCoords.push_back(1.0f * repeat);
+  texCoords.push_back(0.0f);
+  texCoords.push_back(0.0f);
+  texCoords.push_back(0.0f);
+}
+
 void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, float repeat) {
 
-  vector<float> grounds, colors, texCoord;
+  vector<float> grounds, colors, texCoords;
   vector<int> indexes;
   glm::vec4 color = glm::vec4(0.0f, 0.0f, 0.0f, alpha);
 
@@ -1042,16 +1074,9 @@ void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, float repeat) {
     }
   }
 
-  texCoord.push_back(1.0f * repeat);
-  texCoord.push_back(1.0f * repeat);
-  texCoord.push_back(0.0f);
-  texCoord.push_back(1.0f * repeat);
-  texCoord.push_back(1.0f * repeat);
-  texCoord.push_back(0.0f);
-  texCoord.push_back(0.0f);
-  texCoord.push_back(0.0f);
+  fill_texCoords(texCoords, repeat);
 
-  set_vao_texture(texturePipelineProgram, grounds, colors, texCoord, vao);
+  set_vao_texture(texturePipelineProgram, grounds, colors, texCoords, vao);
 
   indexes.push_back(0);
   indexes.push_back(1);
@@ -1383,6 +1408,7 @@ int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffe
 void push_side(glm::vec3 &p0, glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3, glm::vec3 &dir, int i, Vertex_Color &cv, vector<int> &csi) {
     push_side_to_vector(p0, p1, p2, p3, cv.vertex);
     push_side_to_color(dir, dir, dir, dir, cv.color);
+    fill_texCoords(cv.texCoords, 1.0f);
     push_cross_section_index(csi, i);
 }
 
