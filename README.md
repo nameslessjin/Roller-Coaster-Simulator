@@ -51,3 +51,8 @@ the spline will still remain circular and closed.  circle.sp and star.sp have be
 7. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.
 <br><br>
 
+## Extra features besides extra credits
+1. Infinite looping.  The roller coaster will loop infinite without stop.
+<br><br>
+2. Roller coaster camera time/speed control.  Described above.
+<br><br>
