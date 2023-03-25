@@ -1091,7 +1091,6 @@ void fill_texCoords(vector<float> &texCoords, float repeat_x, float repeat_y, ve
 
   texCoords.push_back(end[0] * repeat_x);
   texCoords.push_back(end[1] * repeat_y);
-
 }
 
 void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, float repeat_x, float repeat_y)
@@ -1413,29 +1412,32 @@ int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffe
     glm::vec3 down = -up;
 
     index = i * 4;
+    float inc = 1.0f;
     switch (sd)
     {
     case Y:
-      push_side(p0, p1, p4, p5, right, index, csv.right, cross_section_right_index, f.tex_inc);
-      push_side(p1, p2, p5, p6, up, index, csv.up, cross_section_up_index, f.tex_inc);
-      push_side(p2, p3, p6, p7, left, index, csv.left, cross_section_left_index, f.tex_inc);
-      push_side(p3, p0, p7, p4, down, index, csv.down, cross_section_down_index, f.tex_inc);
+      inc = 1.0f / 500;
+      push_side(p0, p1, p4, p5, right, index, csv.right, cross_section_right_index, inc);
+      push_side(p1, p2, p5, p6, up, index, csv.up, cross_section_up_index, inc);
+      push_side(p2, p3, p6, p7, left, index, csv.left, cross_section_left_index, inc);
+      push_side(p3, p0, p7, p4, down, index, csv.down, cross_section_down_index, inc);
       break;
     case X:
       right = f.tangent;
       left = -right;
-      push_side(p4, p5, p7, p6, right, index, csv.right, cross_section_right_index, 1.0f);
-      push_side(p1, p2, p5, p6, up, index, csv.up, cross_section_up_index, 1.0f);
-      push_side(p3, p2, p0, p1, left, index, csv.left, cross_section_left_index, 1.0f);
-      push_side(p3, p0, p7, p4, down, index, csv.down, cross_section_down_index, 1.0f);
+      push_side(p4, p5, p7, p6, right, index, csv.right, cross_section_right_index, inc);
+      push_side(p1, p2, p5, p6, up, index, csv.up, cross_section_up_index, inc);
+      push_side(p3, p2, p0, p1, left, index, csv.left, cross_section_left_index, inc);
+      push_side(p3, p0, p7, p4, down, index, csv.down, cross_section_down_index, inc);
       break;
     case Z:
       up = f.tangent;
       down = -up;
-      push_side(p0, p1, p4, p5, right, index, csv.right, cross_section_right_index, 1.0f);
-      push_side(p4, p5, p7, p6, up, index, csv.up, cross_section_up_index, 1.0f);
-      push_side(p2, p3, p6, p7, left, index, csv.left, cross_section_left_index, 1.0f);
-      push_side(p3, p2, p0, p1, down, index, csv.down, cross_section_down_index, 1.0f);
+      inc = 1.0f / 200;
+      push_side(p0, p1, p4, p5, right, index, csv.right, cross_section_right_index, inc);
+      push_side(p4, p5, p7, p6, up, index, csv.up, cross_section_up_index, inc);
+      push_side(p2, p3, p6, p7, left, index, csv.left, cross_section_left_index, inc);
+      push_side(p3, p2, p0, p1, down, index, csv.down, cross_section_down_index, inc);
       break;
     default:
       break;
