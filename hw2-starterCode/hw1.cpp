@@ -208,7 +208,8 @@ char windowTitle[512] = "CSCI 420 homework II";
 // vertices
 vector<float> vertices, vertex_colors, velocity;
 GLuint vao_vertices, vao_normal, vao_binormal;
-float max_height = INT_MIN * 1.0f;
+float max_height = INT_MIN * 1.0f;  // max height of the track
+float min_height = INT_MAX * 1.0f; // min height of the track
 
 // lines
 GLuint ebo_line;
@@ -462,7 +463,7 @@ void displayFunc()
   render_cross_section_single(cs_bar.csb, cs_bar.cross_section_side_size);
 
   // cout << "cs_support: " << cs_support.csv.cross_section_vertices.size() << '\n';
-  // render_cross_section_single(cs_support.csb, cs_support.cross_section_side_size);
+  render_cross_section_single(cs_support.csb, cs_support.cross_section_side_size);
 
   // draw environments
   render_environment(texturePipelineProgram, env);
@@ -923,17 +924,19 @@ void get_vertices()
 
   for (int i = 0; i < frenets.size(); i += 200) {
     float b_multiplier = 2.0f;
-    generate_cross_section_vector(frenets[i], cs_bar, 0.0f, b_multiplier, false);
-    generate_cross_section_vector(frenets[(i+50) % frenets.size()], cs_bar, 0.0f, b_multiplier, false);
+    Frenet &f = frenets[i], &f_next = frenets[(i+50) % frenets.size()];
+    glm::vec3 p = f.point;
+    float height = p.z - min_h;
 
-    if (i % 6400 == 0) {
-      b_multiplier = 0.5f;
-      float shift = -1.25f * cross_section_separation;
+    generate_cross_section_vector(f, cs_bar, 0.0f, b_multiplier, false);
+    generate_cross_section_vector(f_next, cs_bar, 0.0f, b_multiplier, false);
+
+    if (i % (frenets.size() / 5200 * 100) == 0 && height < min_height * 1.2) {
+      float shift = -1.0f * cross_section_separation;
       generate_cross_section_vector(frenets[i], cs_support, shift, b_multiplier, true);
-      generate_cross_section_vector(frenets[(i+50) % frenets.size()], cs_support, shift, b_multiplier, true);
+      generate_cross_section_vector(frenets[(i+200) % frenets.size()], cs_support, shift, b_multiplier, true);
     }
   }
-
   cs_bar.cross_section_side_size = generate_cross_section_single(cs_bar.csv, cs_bar.csb, X, 2);
   cs_support.cross_section_side_size = generate_cross_section_single(cs_support.csv, cs_support.csb, Z, 2);
 
@@ -1199,6 +1202,7 @@ void generate_point(Pos &coords, vector<float> &position, vector<float> &color, 
   frenet.point = p;
   frenet.tangent = glm::normalize(t);
   max_height = max(max_height, glm::length(p - ground));
+  min_height = min(min_height, glm::length(p - ground));
 
   if (f.size() == 0)
   {
@@ -1248,8 +1252,10 @@ void generate_cross_section_vector(Frenet &frenet, Cross_Section &cs, float shif
   glm::vec3 v3_t = p + a * (n * -3.0f + b * 0.5f * b_multiplier + b_shit);
 
   if (isVertical) {
-    v1 = v0;
-    v2 = v3;
+    glm::vec3 v0_shift = p + a * (n * -1.0f + b * b_multiplier - b_shit);
+    glm::vec3 v3_shift = p + a * (n * -1.0f + b * -1.0f * b_multiplier - b_shit);
+    v1 = v0.z < v0_shift.z ? v0 : v0_shift;
+    v2 = v3.z < v3_shift.z ? v3 : v3_shift;
     v0 = glm::vec3(v1.x, v1.y, min_h);
     v3 = glm::vec3(v2.x, v2.y, min_h);
 
