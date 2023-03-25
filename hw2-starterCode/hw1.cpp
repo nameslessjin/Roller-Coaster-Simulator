@@ -980,7 +980,7 @@ void get_vertices()
       generate_cross_section_vector(f, cs_bar, 0.0f, b_multiplier, false);
       generate_cross_section_vector(f_next, cs_bar, 0.0f, b_multiplier, false);
 
-      if (i % (frenets.size() / 5200 * 100) == 0 && height < min_height * 1.2)
+      if (i % (frenets.size() / 5200 * 100) == 0 && min_height < height && height < min_height * 1.2)
       {
         float shift = -1.0f * cross_section_separation;
         generate_cross_section_vector(frenets[i], cs_support, shift, b_multiplier, true);

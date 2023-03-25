@@ -36,7 +36,6 @@ spacebar: start/pause
 2. Render double rail side by side
 <br><br>
 
-
 3. Track is circular and close with C1 continuity.  To see a good example of this condition, you can check circle.sp and star.sp.  Even if the u step is large size,
 the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files
 <br><br>
@@ -44,7 +43,8 @@ the spline will still remain circular and closed.  circle.sp and star.sp have be
 4. Render a sky box.  It is texture-mapped.  The entire scene is enclosed into a cube.
 <br><br>
 
-<!-- 5. Draw additional scene elements:  -->
+5. Draw additional scene elements:  textured-mapped wooden cross bars and pillar stick for the rail.
+<br><br>
 
 6. The spline drawn through this program uses recursive subdivision (vary step size to draw short lines) instead of using brute force (vary u with fixed step size)<br><br>
 
