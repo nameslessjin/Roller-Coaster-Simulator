@@ -43,6 +43,7 @@ using namespace std;
 const char ground_image_file[1024] = "Waterpl.jpg";
 const char sky_image_file[1024] = "Natur17l.jpg";
 const char ambrosia_image_file[1024] = "Ambrosia.jpg";
+const char wood_image_file[1024] = "wood.jpg";
 
 // Forward declaration
 // Coordinates and tangents for each position
@@ -726,10 +727,10 @@ void initScene(int argc, char *argv[])
   if (ret != 0)
     abort();
 
-  generate_cross_section_texture(cs_l, ambrosia_image_file);
-  generate_cross_section_texture(cs_r, ambrosia_image_file);
-  generate_cross_section_texture(cs_bar, ambrosia_image_file);
-  generate_cross_section_texture(cs_support, ambrosia_image_file);
+  generate_cross_section_texture(cs_l, wood_image_file);
+  generate_cross_section_texture(cs_r, wood_image_file);
+  generate_cross_section_texture(cs_bar, wood_image_file);
+  generate_cross_section_texture(cs_support, wood_image_file);
 
   get_vertices();
   calculate_physical_velocity();
@@ -1569,8 +1570,8 @@ void set_light(BasicPipelineProgram *pipeline)
   glUniformMatrix4fv(h_normalMatrix, 1, GL_FALSE, n);
 
   // set properties
-  float La[4] = {1.0, 1.0, 1.0}, Ld[4] = {1.0, 1.0, 1.0}, Ls[4] = {1.0, 1.0, 1.0};
-  float ka[4] = {0.1, 0.1, 0.1}, kd[4] = {0.3, 0.3, 0.3}, ks[4] = {0.3, 0.3, 0.3}, alpha = 1.0;
+  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {1.0, 1.0, 1.0}, Ls[4] = {1.0, 1.0, 1.0};
+  float ka[4] = {0.1, 0.1, 0.1}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {0.3, 0.3, 0.3}, alpha = 1.0;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");
