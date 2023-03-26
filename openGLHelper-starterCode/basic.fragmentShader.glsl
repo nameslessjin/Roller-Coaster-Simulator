@@ -38,5 +38,5 @@ void main()
   // compute the final color
   vec4 light = ka * La + d * kd * Ld + pow(s, alpha) * ks * Ls;
   vec4 t = texture(textureSampler, TexCoord);
-  c = light + t;
+  c = vec4(light.x * t.x, light.y * t.y, light.z * t.z, 1.0f);
 }

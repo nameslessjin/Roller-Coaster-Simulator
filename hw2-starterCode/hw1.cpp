@@ -61,6 +61,7 @@ struct Frenet
   glm::vec3 binormal;
   glm::vec3 normal;
   float tex_inc;
+  int index;
 };
 vector<Frenet> frenets;
 vector<Frenet> frenets_v;
@@ -94,10 +95,11 @@ struct Cross_Section
 {
 
   float alpha = 0.04f;
-  int cross_section_side_size = 0;
 
   Cross_Section_Vertex csv;
   Cross_Section_Buffer csb;
+
+  vector<int> frenet_index;
 
   // T shape
   Cross_Section_Vertex csv_t;
@@ -139,7 +141,7 @@ void fill_lines(GLuint &ebo);
 void generate_point(Pos &coords, vector<float> &position, vector<float> &color, vector<Frenet> &f, int subdivide_time);
 void generate_cross_section_vector(Frenet &f, Cross_Section &cs, float shift, float b_multiplier, bool isVertical);
 void generate_cross_section(Cross_Section &cs);
-int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffer &buffer, SECTION_DIRECTION sd, int skip);
+void generate_cross_section_single(Cross_Section &cs, Cross_Section_Vertex &csv, Cross_Section_Buffer &buffer, SECTION_DIRECTION sd, int skip);
 void do_vertex(Pos &coords, vector<float> &vs, vector<float> &vc, vector<Frenet> &f, int subdivide_time);
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_point(vector<float> &position, int index);
@@ -150,7 +152,7 @@ void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, 
 void push_cross_section_index(vector<int> &indexes, int i);
 void render_normal_binormal();
 void render_cross_section(Cross_Section &cs);
-void render_cross_section_single(Cross_Section_Buffer &buffer, int size);
+void render_cross_section_single(Cross_Section_Buffer &buffer, Cross_Section_Vertex &csv);
 void calculate_physical_velocity();
 void push_glm_to_color_texture(glm::vec4 &n, vector<float> &color);
 void generate_environment_texture(Environment &e);
@@ -470,10 +472,10 @@ void displayFunc()
 
   render_cross_section(cs_r);
   render_cross_section(cs_l);
-  render_cross_section_single(cs_bar.csb, cs_bar.cross_section_side_size);
+  render_cross_section_single(cs_bar.csb, cs_bar.csv);
 
   // cout << "cs_support: " << cs_support.csv.cross_section_vertices.size() << '\n';
-  render_cross_section_single(cs_support.csb, cs_support.cross_section_side_size);
+  render_cross_section_single(cs_support.csb, cs_support.csv);
 
   // draw environments
   render_environment(texturePipelineProgram, env);
@@ -896,17 +898,17 @@ void generate_cross_section_texture(Cross_Section &cs, string filename)
 
 void render_cross_section(Cross_Section &cs)
 {
-  render_cross_section_single(cs.csb, cs.cross_section_side_size);
-  render_cross_section_single(cs.csb_t, cs.cross_section_side_size);
+  render_cross_section_single(cs.csb, cs.csv);
+  render_cross_section_single(cs.csb_t, cs.csv_t);
 }
 
-void render_cross_section_single(Cross_Section_Buffer &buffer, int size)
+void render_cross_section_single(Cross_Section_Buffer &buffer, Cross_Section_Vertex &csv)
 {
 
-  render_elements(buffer.right, size);
-  render_elements(buffer.up, size);
-  render_elements(buffer.left, size);
-  render_elements(buffer.down, size);
+  render_elements(buffer.right, csv.right.vertex.size());
+  render_elements(buffer.up, csv.up.vertex.size());
+  render_elements(buffer.left, csv.left.vertex.size());
+  render_elements(buffer.down, csv.down.vertex.size());
 }
 
 void render_elements(VAO_VBO &v, int size)
@@ -966,7 +968,7 @@ void get_vertices()
   for (int i = 0; i < frenets.size(); ++i)
   {
 
-    Frenet &f = frenets[i], &f_next = frenets[(i + 50) % frenets.size()];
+    Frenet &f = frenets[i];
 
     generate_cross_section_vector(f, cs_r, cross_section_separation, 1.0f, false);
     generate_cross_section_vector(f, cs_l, -cross_section_separation, 1.0f, false);
@@ -978,7 +980,7 @@ void get_vertices()
       float height = p.z - min_h;
 
       generate_cross_section_vector(f, cs_bar, 0.0f, b_multiplier, false);
-      generate_cross_section_vector(f_next, cs_bar, 0.0f, b_multiplier, false);
+      generate_cross_section_vector(frenets[(i + 50) % frenets.size()], cs_bar, 0.0f, b_multiplier, false);
 
       if (i % (frenets.size() / 5200 * 100) == 0 && min_height < height && height < min_height * 1.2)
       {
@@ -992,8 +994,8 @@ void get_vertices()
   generate_cross_section(cs_r);
   generate_cross_section(cs_l);
 
-  cs_bar.cross_section_side_size = generate_cross_section_single(cs_bar.csv, cs_bar.csb, X, 2);
-  cs_support.cross_section_side_size = generate_cross_section_single(cs_support.csv, cs_support.csb, Z, 2);
+  generate_cross_section_single(cs_bar, cs_bar.csv, cs_bar.csb, X, 2);
+  generate_cross_section_single(cs_support, cs_support.csv, cs_support.csb, Z, 2);
 
   // cout << "cross_section_vertices size: " << cross_section_vertices.size() / 3 << '\n';
 }
@@ -1274,6 +1276,9 @@ void generate_point(Pos &coords, vector<float> &position, vector<float> &color, 
   frenet.tex_inc = 1.0f / subdivide_time;
   frenet.point = p;
   frenet.tangent = glm::normalize(t);
+  frenet.index = f.size();
+
+  // frenet.
   max_height = max(max_height, glm::length(p - ground));
   min_height = min(min_height, glm::length(p - ground));
 
@@ -1339,6 +1344,8 @@ void generate_cross_section_vector(Frenet &frenet, Cross_Section &cs, float shif
     v3_t = glm::vec3(v2_t.x, v2_t.y, min_h);
   }
 
+  cs.frenet_index.push_back(frenet.index);
+
   push_glm_to_vector(v0, position);
   push_glm_to_vector(v1, position);
   push_glm_to_vector(v2, position);
@@ -1369,17 +1376,17 @@ void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d,
 
 void generate_cross_section(Cross_Section &cs)
 {
-  cs.cross_section_side_size = generate_cross_section_single(cs.csv, cs.csb, Y, 1);
-  generate_cross_section_single(cs.csv_t, cs.csb_t, Y, 1);
+  generate_cross_section_single(cs, cs.csv, cs.csb, Y, 1);
+  generate_cross_section_single(cs, cs.csv_t, cs.csb_t, Y, 1);
 }
 
-int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffer &buffer, SECTION_DIRECTION sd, int skip)
+void generate_cross_section_single(Cross_Section &cs, Cross_Section_Vertex &csv, Cross_Section_Buffer &buffer, SECTION_DIRECTION sd, int skip)
 {
 
   vector<int> cross_section_right_index, cross_section_up_index, cross_section_left_index, cross_section_down_index;
   vector<float> &vecs = csv.cross_section_vertices;
 
-  int i = 0, num_vertices = vecs.size() / (3 * 4);
+  int i = 0, num_vertices = cs.frenet_index.size();
 
   for (; i < num_vertices; i += skip)
   {
@@ -1405,7 +1412,7 @@ int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffe
     glm::vec3 p6 = find_point(vecs, i6);
     glm::vec3 p7 = find_point(vecs, i7);
 
-    Frenet f = frenets[i];
+    Frenet f = frenets[cs.frenet_index[i]];
 
     glm::vec3 right = f.binormal;
     glm::vec3 left = -right;
@@ -1426,6 +1433,7 @@ int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffe
     case X:
       right = f.tangent;
       left = -right;
+
       push_side(p4, p5, p7, p6, right, index, csv.right, cross_section_right_index, inc);
       push_side(p1, p2, p5, p6, up, index, csv.up, cross_section_up_index, inc);
       push_side(p3, p2, p0, p1, left, index, csv.left, cross_section_left_index, inc);
@@ -1455,7 +1463,6 @@ int generate_cross_section_single(Cross_Section_Vertex &csv, Cross_Section_Buffe
   set_ebo(cross_section_left_index, buffer.left.ebo);
   set_ebo(cross_section_down_index, buffer.down.ebo);
 
-  return cross_section_right_index.size();
 }
 
 void push_side(glm::vec3 &p0, glm::vec3 &p1, glm::vec3 &p2, glm::vec3 &p3, glm::vec3 &dir, int i, Vertex_Color &cv, vector<int> &csi, float tex_incre)
@@ -1570,8 +1577,8 @@ void set_light(BasicPipelineProgram *pipeline)
   glUniformMatrix4fv(h_normalMatrix, 1, GL_FALSE, n);
 
   // set properties
-  float La[4] = {0.5, 0.5, 0.5}, Ld[4] = {1.0, 1.0, 1.0}, Ls[4] = {1.0, 1.0, 1.0};
-  float ka[4] = {0.1, 0.1, 0.1}, kd[4] = {0.5, 0.5, 0.5}, ks[4] = {0.3, 0.3, 0.3}, alpha = 1.0;
+  float La[4] = {1.0, 1.0, 1.0}, Ld[4] = {1.0, 1.0, 1.0}, Ls[4] = {1.0, 1.0, 1.0};
+  float ka[4] = {0.2, 0.2, 0.2}, kd[4] = {0.7, 0.7, 0.7}, ks[4] = {0.5, 0.5, 0.5}, alpha = 1.0;
 
   // La, Ka, Ld, kd, Ls, ks, alpha
   set_uniform(program, La, "La");
