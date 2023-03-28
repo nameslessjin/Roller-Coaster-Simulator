@@ -43,7 +43,7 @@ In this part, we computes Phong shading and use 1 directional light to light the
 1. Render a T-shaped rail cross section - Y
 2. Render a Double Rail - Y
 3. Made the track circular and closed it with C1 continuity - Y
-4. Additional Scene Elements: <br>
+4. Additional Scene Elements - Y: <br>
     - Texture-mapped wodden cross bars
     - Texture-mapped wodden pillars
     - Texture-mapped wodden rails
