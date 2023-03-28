@@ -1,9 +1,9 @@
 # CSCI 420 Programming Assignment 2: Simulating a Roller Coaster
 
-Subject             : CSCI420 - Computer Graphics
-Assignment 2        : Simulating a Roller Coaster
-Author              : Jinsen Wu
-USC ID              : 9338292958
+Subject             : CSCI420 - Computer Graphics <br>
+Assignment 2        : Simulating a Roller Coaster <br>
+Author              : Jinsen Wu                   <br>
+USC ID              : 9338292958                  <br>
 
 ## Introduction
 In this assignment, we will use Catmull-Rom splines along with OpenGL core profile shader-based lighting and texture mapping to create a roller coaster simulation.  We will implement two shaders: one for texture mapping (to render the ground), and one for Phong shading (to render the roller coaster rail).  The simulation will run in a first-person view, allowing the user to "ride" the coaster in an immersive environment.
@@ -51,7 +51,8 @@ In this part, we computes Phong shading and use 1 directional light to light the
 6. Create tracks that mimic real world roller coaster - Y
 7. Generate track from several sequences of splines - Y
 8. Draw splines using recursive subdivision - Y
-9. Render environment in a better manner - I don't understand
+9. Render environment in a better manner - <br> 
+    When track texture switch is on, I render the texured rails with pow(light, 1.2) on the texture instead of base Phong lighting.  It provides higher contrast on the track texture.  When track texture switch is off, the lighting on the track is base Phong lighting
 10. Improved coaster normals - N
 11. Modify velocity with which the camera moves - Y
 12. Derive the steps that lead to the physically realistic equation of updating u - N
