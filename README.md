@@ -48,10 +48,12 @@ In this part, we computes Phong shading and use 1 directional light to light the
     - Texture-mapped wodden pillars
     - Texture-mapped wodden rails
 5. Render a sky-box - Y
-6. Create tracks that mimic real world roller coaster - Y
-7. Generate track from several sequences of splines - Y
+6. Create tracks that mimic real world roller coaster - Y <br>
+    Use the example from: https://rcdb.com/25.htm?p=73
+7. Generate track from several sequences of splines - Y <br>
+    use viper.sh in root dir or viper.txt in hw2-starterCode.  The viper roller coaster is made of viper_up.sp, viper_turn_left.sp, viper_turn_right.sp, viper_second_hill.sp, viper_return.sp
 8. Draw splines using recursive subdivision - Y
-9. Render environment in a better manner - <br> 
+9. Render environment in a better manner - Y <br> 
     When track texture switch is on, I render the texured rails with pow(light, 1.2) on the texture instead of base Phong lighting.  It provides higher contrast on the track texture.  When track texture switch is off, the lighting on the track is base Phong lighting
 10. Improved coaster normals - N
 11. Modify velocity with which the camera moves - Y
@@ -68,28 +70,6 @@ Users can control the animation of the roller coaster through designated keys. <
 ">": 10 steps forward <br>
 "s": Switch rails texture on/off <br>
 spacebar: start/pause
-
-============
-1. Render a T-shaped rail cross-section.  The head of T is on the right side of the rail.  I made it big so it is more visible.<br>
-
-2. Render double rail side by side<br>
-
-3. Track is circular and close with C1 continuity.  To see a good example of this condition, you can check circle.sp and star.sp.  Even if the u step is large size,
-the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files<br>
-
-4. Render a sky box.  It is texture-mapped.  The entire scene is enclosed into a cube.<br>
-
-5. Draw additional scene elements:  textured-mapped wooden cross bars and pillar stick for the rail.<br>
-
-6. Created tracks that mimic real world roller coasters, viper coaster.  Use the example from: </n>
-https://rcdb.com/25.htm?p=73<br>
-
-7. Generate viper coaster tracks from several splines. (viper_up.sp, viper_turn_left.sp, viper_turn_right.sp, viper_second_hill.sp, viper_return.sp)<br>
-
-8. The spline drawn through this program uses recursive subdivision (vary step size to draw short lines) instead of using brute force (vary u with fixed step size)<br>
-
-9. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.<br>
-
 
 ## Note
 Examples of how to run the animation is provided in circle.sh, goodRide.sh, viper_whole.sh and viper.sh file in the root directory. <br>
