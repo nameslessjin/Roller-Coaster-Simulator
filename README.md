@@ -28,6 +28,9 @@ Users can control the animation of the roller coaster through designated keys.
 ">": 10 steps forward
 spacebar: start/pause
 
+## Note
+Example of how to run the animation is provided in circle.sh, goodRide.sh, viper_whole.sh and viper.sh file. <br>
+viper_whole.sh and viper.sh are generating the same track.  However, viper generates the track with multiple splines and viper_whole generate the track with one spline.
 
 ## Extra Creidts
 1. Render a T-shaped rail cross-section.  The head of T is on the right side of the rail.  I made it big so it is more visible.
@@ -46,9 +49,16 @@ the spline will still remain circular and closed.  circle.sp and star.sp have be
 5. Draw additional scene elements:  textured-mapped wooden cross bars and pillar stick for the rail.
 <br><br>
 
-6. The spline drawn through this program uses recursive subdivision (vary step size to draw short lines) instead of using brute force (vary u with fixed step size)<br><br>
+6. Created tracks that mimic real world roller coasters, viper coaster.  Use the example from: </n>
+https://rcdb.com/25.htm?p=73
+<br><br>
 
-7. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.
+7. Generate viper coaster tracks from several splines. (viper_up.sp, viper_turn_left.sp, viper_turn_right.sp, viper_second_hill.sp, viper_return.sp)
+<br><br>
+
+8. The spline drawn through this program uses recursive subdivision (vary step size to draw short lines) instead of using brute force (vary u with fixed step size)<br><br>
+
+9. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.
 <br><br>
 
 ## Extra features besides extra credits

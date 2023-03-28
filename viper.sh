@@ -1,3 +1,3 @@
 cd hw2-starterCode
 make
-./hw1 viper.txt
+./hw2 viper.txt

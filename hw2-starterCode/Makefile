@@ -1,8 +1,8 @@
 LIB_CODE_BASE=../openGLHelper-starterCode
 
-HW1_CXX_SRC=hw1.cpp
-HW1_HEADER=
-HW1_OBJ=$(notdir $(patsubst %.cpp,%.o,$(HW1_CXX_SRC)))
+HW2_CXX_SRC=hw2.cpp
+HW2_HEADER=
+HW2_OBJ=$(notdir $(patsubst %.cpp,%.o,$(HW2_CXX_SRC)))
 
 LIB_CODE_CXX_SRC=$(wildcard $(LIB_CODE_BASE)/*.cpp)
 LIB_CODE_HEADER=$(wildcard $(LIB_CODE_BASE)/*.h)
@@ -12,11 +12,11 @@ IMAGE_LIB_SRC=$(wildcard ../external/imageIO/*.cpp)
 IMAGE_LIB_HEADER=$(wildcard ../external/imageIO/*.h)
 IMAGE_LIB_OBJ=$(notdir $(patsubst %.cpp,%.o,$(IMAGE_LIB_SRC)))
 
-HEADER=$(HW1_HEADER) $(LIB_CODE_HEADER) $(IMAGE_LIB_HEADER)
-CXX_OBJ=$(HW1_OBJ) $(LIB_CODE_OBJ) $(IMAGE_LIB_OBJ)
+HEADER=$(HW2_HEADER) $(LIB_CODE_HEADER) $(IMAGE_LIB_HEADER)
+CXX_OBJ=$(HW2_OBJ) $(LIB_CODE_OBJ) $(IMAGE_LIB_OBJ)
 
 CXX=g++
-TARGET=hw1
+TARGET=hw2
 CXXFLAGS=-DGLM_FORCE_RADIANS -std=c++11
 OPT=-O3
 
@@ -40,7 +40,7 @@ all: $(TARGET)
 $(TARGET): $(CXX_OBJ)
 	$(CXX) $(LDFLAGS) $^ $(OPT) $(LIB) -o $@
 
-$(HW1_OBJ):%.o: %.cpp $(HEADER)
+$(HW2_OBJ):%.o: %.cpp $(HEADER)
 	$(CXX) -c $(CXXFLAGS) $(OPT) $(INCLUDE) $< -o $@
 
 $(LIB_CODE_OBJ):%.o: $(LIB_CODE_BASE)/%.cpp $(LIB_CODE_HEADER)
