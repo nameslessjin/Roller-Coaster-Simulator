@@ -34,33 +34,25 @@ Examples of how to run the animation is provided in circle.sh, goodRide.sh, vipe
 viper_whole.sh and viper.sh are generating the same track.  However, viper generates the track with multiple splines and viper_whole generate the track with one spline.
 
 ## Extra Creidts
-1. Render a T-shaped rail cross-section.  The head of T is on the right side of the rail.  I made it big so it is more visible.
-<br>
+1. Render a T-shaped rail cross-section.  The head of T is on the right side of the rail.  I made it big so it is more visible.<br>
 
-2. Render double rail side by side
-<br>
+2. Render double rail side by side<br>
 
 3. Track is circular and close with C1 continuity.  To see a good example of this condition, you can check circle.sp and star.sp.  Even if the u step is large size,
-the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files
-<br>
+the spline will still remain circular and closed.  circle.sp and star.sp have been modified.  The last 3 control points which are the same as the first 3 control points in these files have been removed to ensure the consistency of this property in all spline files<br>
 
-4. Render a sky box.  It is texture-mapped.  The entire scene is enclosed into a cube.
-<br>
+4. Render a sky box.  It is texture-mapped.  The entire scene is enclosed into a cube.<br>
 
-5. Draw additional scene elements:  textured-mapped wooden cross bars and pillar stick for the rail.
-<br>
+5. Draw additional scene elements:  textured-mapped wooden cross bars and pillar stick for the rail.<br>
 
 6. Created tracks that mimic real world roller coasters, viper coaster.  Use the example from: </n>
-https://rcdb.com/25.htm?p=73
-<br>
+https://rcdb.com/25.htm?p=73<br>
 
-7. Generate viper coaster tracks from several splines. (viper_up.sp, viper_turn_left.sp, viper_turn_right.sp, viper_second_hill.sp, viper_return.sp)
-<br>
+7. Generate viper coaster tracks from several splines. (viper_up.sp, viper_turn_left.sp, viper_turn_right.sp, viper_second_hill.sp, viper_return.sp)<br>
 
 8. The spline drawn through this program uses recursive subdivision (vary step size to draw short lines) instead of using brute force (vary u with fixed step size)<br>
 
-9. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.
-<br>
+9. Modify the velocity with which our camera moves to make it physically realistic in terms of gravity.<br>
 
 ## Extra features besides extra credits
 1. Infinite looping.  The roller coaster will loop infinite without stop. <br>
