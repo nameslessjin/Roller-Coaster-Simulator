@@ -186,7 +186,7 @@ int middleMouseButton = 0; // 1 if pressed, 0 if not
 int rightMouseButton = 0;  // 1 if pressed, 0 if not
 
 // speed and velocity control stats
-int speed_coe = 1;
+int speed_coe = 2;
 float max_line_length = 0.001;
 float time_step = 0.0001f / speed_coe, default_speed = 0.0005f;
 int default_speed_step = speed_coe * 10;
@@ -201,6 +201,9 @@ typedef enum
   SCALE
 } CONTROL_STATE;
 CONTROL_STATE controlState = ROTATE;
+
+// Texture on/off
+int texture_switch = 1;
 
 // animation mode
 int animation = 0;
@@ -459,6 +462,8 @@ void displayFunc()
   matrix.Scale(landScale[0], landScale[1], landScale[2]);
   set_matrix(pipelineProgram);
 
+
+
   // render double rails
   render_cross_section(cs_r);
   render_cross_section(cs_l);
@@ -466,6 +471,7 @@ void displayFunc()
   // render support bar and pillars
   render_cross_section_single(cs_bar.csb, cs_bar.csv);
   render_cross_section_single(cs_pillar.csb, cs_pillar.csv);
+
 
   // draw environments
   render_environment(texturePipelineProgram, env);
@@ -674,6 +680,11 @@ void keyboardFunc(unsigned char key, int x, int y)
     counter -= default_speed_step * 10;
     if (counter < 0)
       counter = frenets_v.size() + counter;
+    break;
+
+  case 's':
+    texture_switch = 1 - texture_switch;
+    cout << (texture_switch ? "Texture ON" : "Texture OFF") << '\n';
     break;
 
   case '1':
@@ -1572,9 +1583,9 @@ void set_light(BasicPipelineProgram *pipeline)
 
   // set properties
   float La[4] = {1.0, 1.0, 1.0}, Ld[4] = {1.0, 1.0, 1.0}, Ls[4] = {1.0, 1.0, 1.0};
-  float ka[4] = {0.2, 0.2, 0.2}, kd[4] = {0.7, 0.7, 0.7}, ks[4] = {0.4, 0.4, 0.4}, alpha = 1.0;
+  float ka[4] = {0.2, 0.2, 0.2}, kd[4] = {0.6, 0.6, 0.6}, ks[4] = {0.2, 0.2, 0.2}, alpha = 1.0;
 
-  // La, Ka, Ld, kd, Ls, ks, alpha
+  // La, Ka, Ld, kd, Ls, ks, alpha, texture_switch
   set_uniform(program, La, "La");
   set_uniform(program, Ld, "Ld");
   set_uniform(program, Ls, "Ls");
@@ -1583,6 +1594,8 @@ void set_light(BasicPipelineProgram *pipeline)
   set_uniform(program, ks, "ks");
   GLint h_alpha = glGetUniformLocation(program, "alpha");
   glUniform1f(h_alpha, alpha);
+  GLint h_texture = glGetUniformLocation(program, "texture_switch");
+  glUniform1i(h_texture, texture_switch);
 }
 
 /* recursively create line segment between two control points of splines */

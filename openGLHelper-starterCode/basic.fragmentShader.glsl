@@ -21,6 +21,8 @@ uniform vec4 kd; // mesh diffuse
 uniform vec4 ks; // mesh specular
 uniform float alpha; // shininess
 
+uniform int texture_switch; // Turn texture on/off
+
 in vec3 color;
 
 void main()
@@ -38,6 +40,12 @@ void main()
   // compute the final color
   vec4 light = ka * La + d * kd * Ld + pow(s, alpha) * ks * Ls;
   vec4 t = texture(textureSampler, TexCoord);
-  float power = 1.1;
-  c = vec4(pow(light.x, power) * t.x, pow(light.y, power) * t.y, pow(light.z, power) * t.z, 1.0f);
+  float power = 1.2;
+
+  if (texture_switch == 1) {
+      c = vec4(pow(light.x, power) * t.x, pow(light.y, power) * t.y, pow(light.z, power) * t.z, 1.0f);
+  } else {
+      c = light;
+  }
+
 }

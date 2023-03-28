@@ -26,10 +26,11 @@ Users can control the animation of the roller coaster through designated keys.
 "3": half of the original speed
 "<": 10 steps backwards
 ">": 10 steps forward
+"s": Switch rails texture on/off
 spacebar: start/pause
 
 ## Note
-Example of how to run the animation is provided in circle.sh, goodRide.sh, viper_whole.sh and viper.sh file. <br>
+Examples of how to run the animation is provided in circle.sh, goodRide.sh, viper_whole.sh and viper.sh file in the root directory. <br>
 viper_whole.sh and viper.sh are generating the same track.  However, viper generates the track with multiple splines and viper_whole generate the track with one spline.
 
 ## Extra Creidts
