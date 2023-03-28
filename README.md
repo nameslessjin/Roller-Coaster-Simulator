@@ -63,7 +63,5 @@ https://rcdb.com/25.htm?p=73
 <br>
 
 ## Extra features besides extra credits
-1. Infinite looping.  The roller coaster will loop infinite without stop.
-<br>
-2. Roller coaster camera time/speed control, texture switch.  Described above.
-<br>
+1. Infinite looping.  The roller coaster will loop infinite without stop. <br>
+2. Roller coaster camera time/speed control, texture switch.  Described above. <br>
