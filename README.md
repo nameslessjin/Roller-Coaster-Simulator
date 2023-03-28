@@ -20,13 +20,13 @@ We add a ground plane in the direction of up z-axis.  The ground is texture-mapp
 In this part, we computes Phong shading and use 1 directional light to light the scene.  We modified the basic vertex and fragment shaders to perform Phong Shading, and adjust the Phong shading properties to render the lighting effect properly.
 
 ### Animation Control
-Users can control the animation of the roller coaster through designated keys. </n>
-"1": original speed </n>
-"2": double of the original speed </n>
-"3": half of the original speed </n>
-"<": 10 steps backwards </n>
-">": 10 steps forward </n>
-"s": Switch rails texture on/off </n>
+Users can control the animation of the roller coaster through designated keys. <br>
+"1": original speed <br>
+"2": double of the original speed <br>
+"3": half of the original speed <br>
+"<": 10 steps backwards <br>
+">": 10 steps forward <br>
+"s": Switch rails texture on/off <br>
 spacebar: start/pause
 
 ## Note
