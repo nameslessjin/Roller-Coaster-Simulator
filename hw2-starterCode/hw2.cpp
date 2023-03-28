@@ -206,7 +206,7 @@ CONTROL_STATE controlState = ROTATE;
 int texture_switch = 1;
 
 // animation mode
-int animation = 0;
+int animation = 1;
 int counter = 0;
 
 // state of the world
