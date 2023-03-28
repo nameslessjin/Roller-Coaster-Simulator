@@ -673,7 +673,7 @@ void keyboardFunc(unsigned char key, int x, int y)
     // move backward
     counter -= default_speed_step * 10;
     if (counter < 0)
-      counter = 0;
+      counter = frenets_v.size() + counter;
     break;
 
   case '1':

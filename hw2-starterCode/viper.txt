@@ -1,0 +1,7 @@
+5
+splines/viper_up.sp
+splines/viper_turn_left.sp
+splines/viper_turn_right.sp
+splines/viper_second_hill.sp
+splines/viper_return.sp
+
