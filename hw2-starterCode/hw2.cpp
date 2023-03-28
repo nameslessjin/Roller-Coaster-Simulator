@@ -208,6 +208,11 @@ int texture_switch = 1;
 // animation mode
 int animation = 1;
 int counter = 0;
+int recording = 0;
+int recorded_frame = 0;
+int max_recorded_frame = 1000;
+int r_counter = 0;
+
 
 // state of the world
 float landRotate[3] = {0.0f, 0.0f, 0.0f};
@@ -522,9 +527,23 @@ void render_environment(BasicPipelineProgram *pipeline, Environment &e)
 
 void idleFunc()
 {
+
   // animating
   if (animation == 1)
   {
+    // taking screenshot
+    if (recording && recorded_frame < max_recorded_frame) {
+
+      if (r_counter % int(ceil(round(frenets_v.size() / speed_step) / max_recorded_frame)) == 0) {
+        string filename = to_string(recorded_frame);
+        filename = "./JPEG/" + string(3 - filename.length(), '0') + filename + ".jpg";
+        saveScreenshot(filename.c_str());
+        ++recorded_frame;
+      }
+
+      ++r_counter;
+    }
+
     counter += speed_step;
   }
 
@@ -666,7 +685,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 
   case 'x':
     // take a screenshot
-    saveScreenshot("screenshot.jpg");
+    saveScreenshot("./JPEG/screenshot.jpg");
     break;
 
   case '.':
@@ -683,8 +702,20 @@ void keyboardFunc(unsigned char key, int x, int y)
     break;
 
   case 's':
+
+    // turn texture on/off
     texture_switch = 1 - texture_switch;
     cout << (texture_switch ? "Texture ON" : "Texture OFF") << '\n';
+    break;
+
+  case 'r':
+
+    // Reset the position and start recording
+    counter = 0;
+    animation = 1;
+    recording = 1 - recording;
+    r_counter = 0;
+    cout << (recording ? "Recording ON" : "Recording OFF") << '\n';
     break;
 
   case '1':

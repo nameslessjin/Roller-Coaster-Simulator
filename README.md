@@ -20,7 +20,7 @@ In this assignment, we will use Catmull-Rom splines along with OpenGL core profi
 3. Rendered the camera at a reasonable speed in a continuous path/orientation - Y
 4. Run at interative frame rate (>15fps at 1280 x 720) - Y
 5. Understandably written, well commented code - Y
-6. Attached an Animation folder containing not more than 1000 screenshots -
+6. Attached an Animation folder containing not more than 1000 screenshots - Y
 7. Attached this ReadMe file - Y
 
 ### Splines Creation - level 1
@@ -69,6 +69,7 @@ Users can control the animation of the roller coaster through designated keys. <
 "<": 10 steps backwards <br>
 ">": 10 steps forward <br>
 "s": Switch rails texture on/off <br>
+"r": Reset the position and start recording <br>
 spacebar: start/pause
 
 ## Note
