@@ -442,11 +442,6 @@ void displayFunc()
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
   matrix.LoadIdentity();
 
-  // eye_z is based on the input image dimension
-  // matrix.LookAt(5.0, 10.0, 15.0,
-  //               0.0, 0.0, 0.0,
-  //               0.0, 1.0, 0.0);
-
   int index = counter % frenets_v.size();
   Frenet frenet = frenets_v[index];
 
@@ -1088,7 +1083,7 @@ void calculate_physical_velocity()
     {
 
       Pos position = catmull_rom(u, m);
-      glm::vec3 ground = glm::vec3(position.position.x, position.position.y, -10.0f);
+      glm::vec3 ground = glm::vec3(position.position.x, position.position.y, -20.0f);
       float height = glm::length(position.position - ground);
       u += time_step * sqrt(2 * gravity * (max_height - height)) / glm::length(position.position_tan) + default_speed;
 
