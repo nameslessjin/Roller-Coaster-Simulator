@@ -1,12 +1,4 @@
-﻿/*
-  CSCI 420 Computer Graphics, USC
-  Assignment 1: Height Fields with Shaders.
-  C++ starter code
-
-  Student username: Jinsen Wu
-*/
-
-#include "basicPipelineProgram.h"
+﻿#include "basicPipelineProgram.h"
 #include "openGLMatrix.h"
 #include "imageIO.h"
 #include "openGLHeader.h"
@@ -21,6 +13,7 @@
 #include <map>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <random>
 
 #if defined(WIN32) || defined(_WIN32)
 #ifdef _DEBUG
@@ -43,6 +36,7 @@ const char ground_image_file[1024] = "Waterpl.jpg";
 const char sky_image_file[1024] = "Natur17l.jpg";
 const char ambrosia_image_file[1024] = "Ambrosia.jpg";
 const char wood_image_file[1024] = "wood.jpg";
+const char skyBox[1024] = "skybox.jpg";
 
 // Forward declaration
 // Coordinates and tangents for each position
@@ -120,6 +114,15 @@ struct Plane
   glm::vec3 bottom_right;
 };
 
+enum Dirs {
+  ground,
+  sky,
+  front,
+  back,
+  left,
+  right
+};
+
 // environment structure
 struct Environment
 {
@@ -149,7 +152,7 @@ void generate_cross_section_single(Cross_Section &cs, Cross_Section_Vertex &csv,
 void push_glm_to_vector(glm::vec3 &g, vector<float> &vec);
 glm::vec3 find_point(vector<float> &position, int index);
 void push_glm_to_color(glm::vec3 &n, vector<float> &color);
-void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, float repeat_x, float repeat_y);
+void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, Dirs d);
 void push_side_to_vector(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &vec);
 void push_side_to_color(glm::vec3 &a, glm::vec3 &b, glm::vec3 &c, glm::vec3 &d, vector<float> &color);
 void push_cross_section_index(vector<int> &indexes, int i);
@@ -887,29 +890,38 @@ void generate_texture(GLuint *texture, string filename)
 void generate_environment(Environment &e)
 {
 
+// float l = 5000.0f;    // side of the plane
+// float min_h = -10.0f; // min height of the environment
+// float sd = l;         // side distance from the center
+// float sh = l / 2;     // height of the sky
+
+  float l = 1000.0f;
+  float sh = 200 * 2 + min_h - 50;
+  float sd = l / 2.0f;
+
   // 1, 1 | -1, 1 | 1, -1 | -1, -1
   vector<float> ground_coords{l, l, min_h, -l, l, min_h, l, -l, min_h, -l, -l, min_h};
-  vector<float> sky_coords{l, l, sh, -l, l, sh, l, -l, sh, -l, -l, sh};
-  vector<float> left_coords{l, sd, sh, -l, sd, sh, l, sd, -sh, -l, sd, -sh};
-  vector<float> right_coords{l, -sd, sh, -l, -sd, sh, l, -sd, -sh, -l, -sd, -sh};
-  vector<float> front_coords{sd, l, sh, sd, -l, sh, sd, l, -sh, sd, -l, -sh};
-  vector<float> back_coords{-sd, l, sh, -sd, -l, sh, -sd, l, -sh, -sd, -l, -sh};
+  vector<float> sky_coords{-l, l, sh, l, l, sh, -l, -l, sh, l, -l, sh};
+  vector<float> left_coords{-l, l, sh, -l, -l, sh, -l, l, min_h, -l, -l, min_h};
+  vector<float> right_coords{l, -l, sh, l, l, sh, l, -l, min_h, l, l, min_h};
+  vector<float> front_coords{l, l, sh, -l, l, sh, l, l, min_h, -l, l, min_h};
+  vector<float> back_coords{-l, -l, sh, l, -l, sh, -l, -l, min_h, l, -l, min_h};
 
   // create planes for the environment box
-  fill_plane(ground_coords, e.ground.vao, e.ground.ebo, 1000.0f, 1000.0f);
-  fill_plane(sky_coords, e.sky.vao, e.sky.ebo, 1.0f, 1.0f);
-  fill_plane(left_coords, e.left.vao, e.left.ebo, 1.0f, 1.0f);
-  fill_plane(right_coords, e.right.vao, e.right.ebo, 1.0f, 1.0f);
-  fill_plane(front_coords, e.front.vao, e.front.ebo, 1.0f, 1.0f);
-  fill_plane(back_coords, e.back.vao, e.back.ebo, 1.0f, 1.0f);
+  fill_plane(ground_coords, e.ground.vao, e.ground.ebo, Dirs::ground);
+  fill_plane(sky_coords, e.sky.vao, e.sky.ebo, Dirs::sky);
+  fill_plane(left_coords, e.left.vao, e.left.ebo, Dirs::left);
+  fill_plane(right_coords, e.right.vao, e.right.ebo, Dirs::right);
+  fill_plane(front_coords, e.front.vao, e.front.ebo, Dirs::front);
+  fill_plane(back_coords, e.back.vao, e.back.ebo, Dirs::back);
 
   // apply texture to the environment
-  generate_texture(&e.sky.texture, sky_image_file);
-  generate_texture(&e.left.texture, sky_image_file);
-  generate_texture(&e.right.texture, sky_image_file);
-  generate_texture(&e.front.texture, sky_image_file);
-  generate_texture(&e.back.texture, sky_image_file);
-  generate_texture(&e.ground.texture, ground_image_file);
+  generate_texture(&e.sky.texture, skyBox);
+  generate_texture(&e.left.texture, skyBox);
+  generate_texture(&e.right.texture, skyBox);
+  generate_texture(&e.front.texture, skyBox);
+  generate_texture(&e.back.texture, skyBox);
+  generate_texture(&e.ground.texture, skyBox);
 }
 
 /* render cross section for T shape section */
@@ -1122,13 +1134,27 @@ void fill_texCoords(vector<float> &texCoords, float repeat_x, float repeat_y, ve
   texCoords.push_back(end[1] * repeat_y);
 }
 
-/* generate plane */
-void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, float repeat_x, float repeat_y)
+void fill_textCoords_env(vector<float> &texCoords, float top, float bottom, float right, float left)
 {
 
-  vector<float> position, colors, texCoords, start{0.0f, 0.0f}, end{1.0f, 1.0f};
+  texCoords.push_back(right);
+  texCoords.push_back(bottom);
+  texCoords.push_back(left);
+  texCoords.push_back(bottom);
+
+  texCoords.push_back(right);
+  texCoords.push_back(top);
+  texCoords.push_back(left);
+  texCoords.push_back(top);
+}
+
+/* generate plane */
+void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, Dirs d)
+{
+
+  vector<float> position, colors, texCoords;
   vector<int> indexes;
-  glm::vec4 color = glm::vec4(0.0f, 0.0f, 0.0f, alpha);
+  glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, alpha);
 
   int size = plane.size();
 
@@ -1142,7 +1168,32 @@ void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, float repeat_x, 
       push_glm_to_color_texture(color, colors);
     }
   }
-  fill_texCoords(texCoords, repeat_x, repeat_y, start, end);
+
+  switch (d)
+  {
+    case Dirs::sky:
+      fill_textCoords_env(texCoords, 2.0f / 3, 1.0f, 3.0f / 4, 1.0f / 2);
+      break;
+    case Dirs::ground:
+      fill_textCoords_env(texCoords, 0.0f, 1.0f / 3, 3.0f / 4, 1.0f / 2);
+      break;
+    case Dirs::front:
+      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 3.0f / 4, 1.0f / 2);
+      break;
+    case Dirs::back:
+      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 1.0f / 4, 0.0f);
+      break;
+    case Dirs::right:
+      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 1.0f , 3.0f / 4);
+      break;
+    case Dirs::left:
+      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 1.0f / 2, 1.0f / 4);
+      break;
+    default:
+      fill_textCoords_env(texCoords, 0.0f, 1.0f / 3, 3.0f / 4, 1.0 / 2);
+      break;
+  }
+
 
   set_vao_texture(texturePipelineProgram, position, colors, texCoords, vao);
 
