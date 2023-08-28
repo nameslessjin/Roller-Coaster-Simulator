@@ -36,7 +36,7 @@ const char ground_image_file[1024] = "Waterpl.jpg";
 const char sky_image_file[1024] = "Natur17l.jpg";
 const char ambrosia_image_file[1024] = "Ambrosia.jpg";
 const char wood_image_file[1024] = "wood.jpg";
-const char skyBox[1024] = "skybox.jpg";
+const char skyBox[1024] = "violentDays.jpg";
 
 // Forward declaration
 // Coordinates and tangents for each position
@@ -244,7 +244,7 @@ float cross_section_separation = 3.0f;
 
 // environment settings
 float l = 5000.0f;    // side of the plane
-float min_h = -10.0f; // min height of the environment
+float min_h = -20.0f; // min height of the environment
 float sd = l;         // side distance from the center
 float sh = l / 2;     // height of the sky
 Environment env;
@@ -724,7 +724,7 @@ void keyboardFunc(unsigned char key, int x, int y)
   case '1':
 
     // set to default speed
-    speed_step = default_speed_step;
+    speed_step = default_speed_step * 1.2;
     break;
 
   case '2':
@@ -895,9 +895,9 @@ void generate_environment(Environment &e)
 // float sd = l;         // side distance from the center
 // float sh = l / 2;     // height of the sky
 
-  float l = 1000.0f;
-  float sh = 200 * 2 + min_h - 50;
-  float sd = l / 2.0f;
+  float l = 50.0f;
+  float min_h = -20.0f;
+  float sh = l + min_h;
 
   // 1, 1 | -1, 1 | 1, -1 | -1, -1
   vector<float> ground_coords{l, l, min_h, -l, l, min_h, l, -l, min_h, -l, -l, min_h};
@@ -1021,7 +1021,7 @@ void get_vertices()
 
       // every 52 points and the height must be slightly above the min_height of the rails
       // frenets.size() / 5200 * 100 is made sure to be a nice integer value
-      if (i % int(frenets.size() / 5200 * 100) == 0 && min_height < height && height < min_height * 1.2)
+      if (i % int(frenets.size() / 5200 * 100) == 0 && min_height < height && height < min_height * 2.3)
       {
         float shift = -1.0f * cross_section_separation;
         generate_cross_section_vector(frenets[i], cs_pillar, shift, b_multiplier, true);
@@ -1137,15 +1137,18 @@ void fill_texCoords(vector<float> &texCoords, float repeat_x, float repeat_y, ve
 void fill_textCoords_env(vector<float> &texCoords, float top, float bottom, float right, float left)
 {
 
-  texCoords.push_back(right);
-  texCoords.push_back(bottom);
-  texCoords.push_back(left);
-  texCoords.push_back(bottom);
+  float err = 1e-6;
 
   texCoords.push_back(right);
   texCoords.push_back(top);
   texCoords.push_back(left);
   texCoords.push_back(top);
+
+  texCoords.push_back(right);
+  texCoords.push_back(bottom);
+  texCoords.push_back(left);
+  texCoords.push_back(bottom);
+
 }
 
 /* generate plane */
@@ -1169,28 +1172,52 @@ void fill_plane(vector<float> &plane, GLuint &vao, GLuint &ebo, Dirs d)
     }
   }
 
+  float top = 1.0f, bottom = 2.0f / 3, right = 1.0f / 2, left = 1.0f / 4;
+  float err = 1e-3;
   switch (d)
   {
     case Dirs::sky:
-      fill_textCoords_env(texCoords, 2.0f / 3, 1.0f, 3.0f / 4, 1.0f / 2);
+
+      top = 1.0f - err, bottom = 2.0f / 3 + err, right = 1.0f / 2 - err, left = 1.0f / 4 + err;
+
+      texCoords.push_back(left);
+      texCoords.push_back(top);
+      texCoords.push_back(left);
+      texCoords.push_back(bottom);
+
+      texCoords.push_back(right);
+      texCoords.push_back(top);
+      texCoords.push_back(right);
+      texCoords.push_back(bottom);
       break;
     case Dirs::ground:
-      fill_textCoords_env(texCoords, 0.0f, 1.0f / 3, 3.0f / 4, 1.0f / 2);
+
+      top = 1.0f / 3 - err, bottom = 0.0f + err, right = 1.0f / 2 - err, left = 1.0f / 4 + err;
+
+      texCoords.push_back(left);
+      texCoords.push_back(top);
+      texCoords.push_back(left);
+      texCoords.push_back(bottom);
+
+      texCoords.push_back(right);
+      texCoords.push_back(top);
+      texCoords.push_back(right);
+      texCoords.push_back(bottom);
       break;
     case Dirs::front:
-      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 3.0f / 4, 1.0f / 2);
+      fill_textCoords_env(texCoords, 2.0f / 3 - err, 1.0f / 3 + err, 1.0f / 4 - err, 0.0f + err);
       break;
     case Dirs::back:
-      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 1.0f / 4, 0.0f);
+      fill_textCoords_env(texCoords, 2.0f / 3 - err, 1.0f / 3 + err, 3.0f / 4 - err, 1.0f / 2 + err);
       break;
     case Dirs::right:
-      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 1.0f , 3.0f / 4);
+      fill_textCoords_env(texCoords, 2.0f / 3 - err, 1.0f / 3 + err, 1.0f / 2 - err, 1.0f / 4 + err);
       break;
     case Dirs::left:
-      fill_textCoords_env(texCoords, 1.0f / 3, 2.0f / 3, 1.0f / 2, 1.0f / 4);
+      fill_textCoords_env(texCoords, 2.0f / 3 - err, 1.0f / 3 + err, 1.0f - err, 3.0f / 4 + err);
       break;
     default:
-      fill_textCoords_env(texCoords, 0.0f, 1.0f / 3, 3.0f / 4, 1.0 / 2);
+      fill_textCoords_env(texCoords, 1.0f - err, 2.0f / 3 + err, 1.0f / 2 - err, 1.0f / 4 + err);
       break;
   }
 
