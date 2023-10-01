@@ -24,24 +24,22 @@ In this part, we computes Phong shading and use 1 directional light to light the
 
 ## Extra Features
 
-1. Render a T-shaped rail cross section - Y
-2. Render a Double Rail - Y
-3. Made the track circular and closed it with C1 continuity - Y
-4. Additional Scene Elements - Y: <br>
+1. Render a T-shaped rail cross section
+2. Render a Double Rail
+3. Made the track circular and closed it with C1 continuity
+4. Additional Scene Elements: <br>
     - Texture-mapped wodden cross bars
     - Texture-mapped wodden pillars
     - Texture-mapped wodden rails
-5. Render a sky-box - Y
-6. Create tracks that mimic real world roller coaster - Y <br>
-    Use the example from: https://rcdb.com/25.htm?p=73
-7. Generate track from several sequences of splines - Y <br>
+5. Render a sky-box
+6. Create tracks that mimic real world roller coaster.  Use the example from: https://rcdb.com/25.htm?p=73
+7. Generate track from several sequences of splines <br>
     use viper.sh in root dir or viper.txt in hw2-starterCode.  The viper roller coaster is made of viper_up.sp, viper_turn_left.sp, viper_turn_right.sp, viper_second_hill.sp, viper_return.sp
-8. Draw splines using recursive subdivision - Y
-9. Render environment in a better manner - Y <br> 
+8. Draw splines using recursive subdivision
+9. Render environment in a better manner:<br> 
     When track texture switch is on, I render the texured rails with pow(light, 1.2) on the texture instead of base Phong lighting.  It provides higher contrast on the track texture.  When track texture switch is off, the lighting on the track is base Phong lighting
-10. Improved coaster normals - N
-11. Modify velocity with which the camera moves - Y
-12. Derive the steps that lead to the physically realistic equation of updating u - N
+10. Modify velocity with which the camera moves
+
 
 Additional Features:
 1. Infinite looping.  The roller coaster will loop infinite without stop
